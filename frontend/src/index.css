@@ -1,0 +1,364 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --booking-blue: #003580;
+  --booking-dark-blue: #00224f;
+  --booking-light-blue: #0071c2;
+  --booking-yellow: #febb02;
+  --booking-orange: #ff8000;
+  --booking-green: #008009;
+  --booking-red: #cc0000;
+  --booking-gray: #6b6b6b;
+  --booking-light-gray: #f5f5f5;
+  --booking-border: #e7e7e7;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Cairo', BlinkMacSystemFont, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  direction: rtl;
+  text-align: right;
+  background-color: #f0f4f8;
+  color: #333;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Booking.com Style Buttons */
+@layer components {
+  .btn-booking-primary {
+    @apply bg-[#0071c2] hover:bg-[#00487a] text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200;
+    box-shadow: 0 4px 12px 0 rgba(0,113,194,.25);
+  }
+  
+  .btn-booking-primary:hover {
+    box-shadow: 0 6px 16px 0 rgba(0,113,194,.35);
+    transform: translateY(-1px);
+  }
+  
+  .btn-booking-secondary {
+    @apply bg-white hover:bg-gray-50 text-[#0071c2] font-semibold py-3 px-6 rounded-xl border-2 border-[#0071c2] transition-all duration-200;
+  }
+  
+  .btn-booking-yellow {
+    @apply bg-[#febb02] hover:bg-[#e5a800] text-[#003580] font-bold py-3 px-6 rounded-xl transition-all duration-200;
+    box-shadow: 0 4px 12px 0 rgba(254,187,2,.35);
+  }
+  
+  .btn-booking-danger {
+    @apply bg-[#cc0000] hover:bg-[#a30000] text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200;
+  }
+
+  /* Booking.com Style Cards - More Rounded & Softer */
+  .card-booking {
+    @apply bg-white rounded-2xl border border-gray-100 transition-all duration-200;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
+  }
+  
+  .card-booking:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.08);
+  }
+
+  /* Booking.com Style Inputs */
+  .input-booking {
+    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[#0071c2] focus:ring-2 focus:ring-[#0071c2]/20 bg-white text-gray-900 transition-all duration-200;
+  }
+  
+  .input-booking:hover {
+    @apply border-gray-300;
+  }
+
+  /* Booking.com Style Select */
+  .select-booking {
+    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[#0071c2] focus:ring-2 focus:ring-[#0071c2]/20 bg-white text-gray-900 appearance-none cursor-pointer transition-all duration-200;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: left 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25em 1.25em;
+    padding-left: 2.5rem;
+  }
+
+  .select-booking:hover {
+    @apply border-gray-300;
+  }
+
+  /* Booking.com Style Labels */
+  .label-booking {
+    @apply block text-sm font-semibold text-gray-600 mb-2;
+  }
+
+  /* Booking.com Badge - Rounded */
+  .badge-booking {
+    @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold;
+  }
+  
+  .badge-booking-blue {
+    @apply bg-[#003580] text-white;
+  }
+  
+  .badge-booking-green {
+    @apply bg-emerald-500 text-white;
+  }
+  
+  .badge-booking-yellow {
+    @apply bg-amber-400 text-amber-900;
+  }
+  
+  .badge-booking-red {
+    @apply bg-red-500 text-white;
+  }
+}
+
+/* Custom Scrollbar - Softer */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Booking.com Header Style - More Modern */
+.header-booking {
+  background: linear-gradient(135deg, #003580 0%, #00224f 100%);
+}
+
+/* Booking.com Navigation - Rounded */
+.nav-item-booking {
+  @apply text-white hover:bg-white/15 px-4 py-2.5 rounded-xl transition-all duration-200 font-medium;
+}
+
+.nav-item-booking.active {
+  @apply bg-white text-[#003580] shadow-lg;
+}
+
+/* Animations - Smoother */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from { 
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.25s ease-out;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* Booking.com Table Style - Rounded */
+.table-booking {
+  @apply w-full border-collapse;
+}
+
+.table-booking th {
+  @apply bg-gray-50 text-gray-600 font-semibold py-4 px-5 text-right;
+}
+
+.table-booking th:first-child {
+  @apply rounded-tr-xl;
+}
+
+.table-booking th:last-child {
+  @apply rounded-tl-xl;
+}
+
+.table-booking td {
+  @apply py-4 px-5 border-b border-gray-100;
+}
+
+.table-booking tr:hover td {
+  @apply bg-blue-50/50;
+}
+
+.table-booking tbody tr:last-child td {
+  @apply border-b-0;
+}
+
+.table-booking tbody tr:last-child td:first-child {
+  @apply rounded-br-xl;
+}
+
+.table-booking tbody tr:last-child td:last-child {
+  @apply rounded-bl-xl;
+}
+
+/* Booking.com Modal Overlay - Softer */
+.modal-overlay-booking {
+  @apply fixed inset-0 bg-black/40 flex items-center justify-center z-50;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content-booking {
+  @apply bg-white rounded-3xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden;
+}
+
+.modal-header-booking {
+  @apply bg-gradient-to-r from-[#003580] to-[#0071c2] text-white px-6 py-5 flex justify-between items-center;
+}
+
+.modal-body-booking {
+  @apply p-6;
+}
+
+/* Focus States - Softer */
+*:focus-visible {
+  outline: 3px solid rgba(0,113,194,0.4);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Selection */
+::selection {
+  background-color: rgba(0,113,194,0.2);
+  color: #003580;
+}
+
+/* Extra Utility Classes for Smooth UI */
+.shadow-soft {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+}
+
+.shadow-soft-lg {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08);
+}
+
+.gradient-blue {
+  background: linear-gradient(135deg, #003580 0%, #0071c2 100%);
+}
+
+.gradient-green {
+  background: linear-gradient(135deg, #008009 0%, #00a00b 100%);
+}
+
+.gradient-yellow {
+  background: linear-gradient(135deg, #febb02 0%, #ffc107 100%);
+}
+
+/* Card Variants with Colored Borders - Rounded */
+.card-blue-border {
+  @apply bg-white rounded-2xl border-r-4 border-blue-500;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.08), 0 4px 16px rgba(0,0,0,0.04);
+}
+
+.card-green-border {
+  @apply bg-white rounded-2xl border-r-4 border-emerald-500;
+  box-shadow: 0 2px 8px rgba(16,185,129,0.08), 0 4px 16px rgba(0,0,0,0.04);
+}
+
+.card-orange-border {
+  @apply bg-white rounded-2xl border-r-4 border-orange-500;
+  box-shadow: 0 2px 8px rgba(249,115,22,0.08), 0 4px 16px rgba(0,0,0,0.04);
+}
+
+.card-purple-border {
+  @apply bg-white rounded-2xl border-r-4 border-purple-500;
+  box-shadow: 0 2px 8px rgba(168,85,247,0.08), 0 4px 16px rgba(0,0,0,0.04);
+}
+
+.card-red-border {
+  @apply bg-white rounded-2xl border-r-4 border-red-500;
+  box-shadow: 0 2px 8px rgba(239,68,68,0.08), 0 4px 16px rgba(0,0,0,0.04);
+}
+
+.card-yellow-border {
+  @apply bg-white rounded-2xl border-r-4 border-yellow-500;
+  box-shadow: 0 2px 8px rgba(234,179,8,0.08), 0 4px 16px rgba(0,0,0,0.04);
+}
+
+.card-gray-border {
+  @apply bg-white rounded-2xl border-r-4 border-gray-400;
+  box-shadow: 0 2px 8px rgba(156,163,175,0.08), 0 4px 16px rgba(0,0,0,0.04);
+}
+
+/* Status Badge Colors - Pill Shape */
+.status-confirmed {
+  @apply bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-full text-sm font-bold;
+}
+
+.status-pending {
+  @apply bg-amber-100 text-amber-700 px-4 py-1.5 rounded-full text-sm font-bold;
+}
+
+.status-cancelled {
+  @apply bg-red-100 text-red-700 px-4 py-1.5 rounded-full text-sm font-bold;
+}
+
+.status-completed {
+  @apply bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-sm font-bold;
+}
+
+/* Smooth Hover Effects */
+.hover-lift {
+  @apply transition-all duration-200;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+/* Gradient Cards */
+.card-gradient-blue {
+  @apply rounded-2xl text-white;
+  background: linear-gradient(135deg, #003580 0%, #0056b3 50%, #0071c2 100%);
+  box-shadow: 0 4px 16px rgba(0,53,128,0.3);
+}
+
+.card-gradient-green {
+  @apply rounded-2xl text-white;
+  background: linear-gradient(135deg, #008009 0%, #00a00b 100%);
+  box-shadow: 0 4px 16px rgba(0,128,9,0.3);
+}

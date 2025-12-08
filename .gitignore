@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+yarn.lock
+# Note: package-lock.json should be committed for consistent installs
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+build-output/
+*.log
+
+# Cache
+.cache/
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# Local data
+MiraData/
+uploads/
+inventory_images/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# Firebase (if using local emulator)
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+
+
+
+
+

@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Inventory images - authenticated users only
+    match /inventory_images/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Apartment images - authenticated users only
+    match /apartments/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Room images - authenticated users only
+    match /rooms/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Default: deny all access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
