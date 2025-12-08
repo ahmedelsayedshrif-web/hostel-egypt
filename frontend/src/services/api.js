@@ -4,6 +4,13 @@ import axios from 'axios'
 const getBaseUrl = () => {
   // In electron/browser, use the same origin as the app
   if (typeof window !== 'undefined' && window.location) {
+    // If we're on a localhost or electron (file://), use local backend
+    if (window.location.protocol === 'file:' || 
+        window.location.hostname === 'localhost' || 
+        window.location.hostname === '127.0.0.1') {
+      return 'http://127.0.0.1:5000/api'
+    }
+    // Otherwise (production/Firebase Hosting), use same origin
     return window.location.origin + '/api'
   }
   return 'http://127.0.0.1:5000/api'

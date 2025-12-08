@@ -16,12 +16,17 @@ import Inventory from './pages/Inventory'
 import { currencyAPI } from './services/api'
 
 function App() {
-  // تحديث أسعار الصرف تلقائياً عند فتح التطبيق
+  // تحديث أسعار الصرف تلقائياً عند فتح التطبيق (فقط إذا كان Backend متاح)
   useEffect(() => {
     const refreshExchangeRates = async () => {
       try {
-        await currencyAPI.refreshFromInternet()
+        // Only try to refresh if we're in Electron/local environment
+        // In production (Firebase Hosting), skip auto-refresh as backend isn't available
+        if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          await currencyAPI.refreshFromInternet()
+        }
       } catch (error) {
+        // Silently fail - user can manually refresh from settings
         console.error('❌ فشل تحديث أسعار الصرف:', error)
       }
     }

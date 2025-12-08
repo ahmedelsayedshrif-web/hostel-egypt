@@ -9,7 +9,11 @@ const API_URL = window.location.origin + '/api'
 const Settings = () => {
   const [amenities, setAmenities] = useState([])
   const [newAmenity, setNewAmenity] = useState('')
-  const [currencyRates, setCurrencyRates] = useState([])
+  const [currencyRates, setCurrencyRates] = useState([
+    { currency: 'USD', rateToEGP: 50, symbol: '$', source: null },
+    { currency: 'EUR', rateToEGP: 54, symbol: '€', source: null },
+    { currency: 'GBP', rateToEGP: 63, symbol: '£', source: null }
+  ])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(null)
@@ -29,19 +33,48 @@ const Settings = () => {
     try {
       setLoading(true)
       const [amenitiesRes, ratesRes] = await Promise.all([
-        settingsAPI.getAmenities().catch(() => ({ data: [] })),
-        currencyAPI.getRates().catch(() => ({ data: [] }))
+        settingsAPI.getAmenities().catch((err) => {
+          console.error('Error fetching amenities:', err)
+          return { data: [] }
+        }),
+        currencyAPI.getRates().catch((err) => {
+          console.error('Error fetching currency rates:', err)
+          // Return default rates if API fails
+          return { 
+            data: [
+              { currency: 'USD', rateToEGP: 50, symbol: '$', source: null },
+              { currency: 'EUR', rateToEGP: 54, symbol: '€', source: null },
+              { currency: 'GBP', rateToEGP: 63, symbol: '£', source: null }
+            ] 
+          }
+        })
       ])
       setAmenities(amenitiesRes.data || [])
-      setCurrencyRates(ratesRes.data || [])
+      let rates = ratesRes.data || []
+      
+      // Ensure we always have some rates displayed (default rates if empty)
+      if (!rates || rates.length === 0) {
+        rates = [
+          { currency: 'USD', rateToEGP: 50, symbol: '$', source: null },
+          { currency: 'EUR', rateToEGP: 54, symbol: '€', source: null },
+          { currency: 'GBP', rateToEGP: 63, symbol: '£', source: null }
+        ]
+      }
+      setCurrencyRates(rates)
       
       // Get last updated time from rates
-      if (ratesRes.data && ratesRes.data.length > 0) {
-        const lastUpdate = ratesRes.data.find(r => r.lastUpdated)?.lastUpdated
+      if (rates.length > 0) {
+        const lastUpdate = rates.find(r => r.lastUpdated)?.lastUpdated
         if (lastUpdate) setLastUpdated(new Date(lastUpdate))
       }
     } catch (error) {
       console.error('Error fetching data:', error)
+      // Set default rates on complete failure
+      setCurrencyRates([
+        { currency: 'USD', rateToEGP: 50, symbol: '$', source: null },
+        { currency: 'EUR', rateToEGP: 54, symbol: '€', source: null },
+        { currency: 'GBP', rateToEGP: 63, symbol: '£', source: null }
+      ])
     } finally {
       setLoading(false)
     }
@@ -54,13 +87,25 @@ const Settings = () => {
       if (response.data?.success) {
         toast.success('تم تحديث أسعار الصرف من الإنترنت بنجاح! 🌐')
         setLastUpdated(new Date())
-        fetchData() // Reload the rates
+        // Reload the rates after a short delay
+        setTimeout(() => {
+          fetchData()
+        }, 500)
       } else {
         toast.error(response.data?.error || 'فشل في تحديث الأسعار')
       }
     } catch (error) {
       console.error('Error refreshing rates:', error)
-      const errorMsg = error.response?.data?.error || 'فشل في الاتصال بالإنترنت. تأكد من اتصالك بالشبكة.'
+      let errorMsg = 'فشل في الاتصال بالإنترنت.'
+      
+      if (error.response) {
+        errorMsg = error.response.data?.error || 'فشل في تحديث الأسعار من الخادم'
+      } else if (error.request) {
+        errorMsg = 'لا يمكن الوصول إلى الخادم. تأكد من تشغيل Backend أو اتصالك بالإنترنت.'
+      } else {
+        errorMsg = error.message || 'حدث خطأ غير متوقع'
+      }
+      
       toast.error(errorMsg)
     } finally {
       setRefreshing(false)
@@ -154,8 +199,8 @@ const Settings = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6 text-booking-blue">الإعدادات</h1>
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-booking-blue">الإعدادات</h1>
 
       {/* Currency Rates Section */}
       <motion.div
@@ -163,7 +208,7 @@ const Settings = () => {
         animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-2xl shadow-lg p-6 mb-6"
       >
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
           <div>
             <h2 className="text-2xl font-bold text-booking-blue flex items-center gap-2">
               💱 أسعار الصرف
@@ -172,11 +217,11 @@ const Settings = () => {
               عدّل أسعار الصرف الحالية مقابل الجنيه المصري
             </p>
           </div>
-          <div className="mt-4 md:mt-0 flex flex-col items-end gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <button
               onClick={handleRefreshFromInternet}
               disabled={refreshing}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
+              className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all whitespace-nowrap ${
                 refreshing 
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                   : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl'
@@ -200,7 +245,7 @@ const Settings = () => {
               )}
             </button>
             {lastUpdated && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-500 text-center sm:text-right">
                 آخر تحديث: {lastUpdated.toLocaleDateString('ar-EG', { 
                   day: 'numeric', 
                   month: 'short',
@@ -212,14 +257,31 @@ const Settings = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          {currencyRates.map((rate, index) => (
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 text-gray-600">جاري تحميل أسعار الصرف...</p>
+          </div>
+        ) : currencyRates.length === 0 ? (
+          <div className="text-center py-8 bg-yellow-50 border-2 border-yellow-200 rounded-xl">
+            <p className="text-yellow-800 font-bold mb-2">⚠️ لا توجد عملات متاحة</p>
+            <p className="text-sm text-yellow-700 mb-4">تأكد من اتصال Backend بالإنترنت</p>
+            <button
+              onClick={fetchData}
+              className="bg-yellow-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-yellow-600 transition-colors"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4">
+            {currencyRates.map((rate, index) => (
             <motion.div
               key={`${rate.currency}-${rate.rateToEGP}-${rate.lastUpdated || index}`}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2, delay: index * 0.1 }}
-              className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl border-2 border-blue-200 relative group"
+              className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl border-2 border-blue-200 relative group hover:shadow-lg transition-shadow"
             >
               {rate.source && (
                 <span className="absolute top-2 left-2 text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">
@@ -241,19 +303,23 @@ const Settings = () => {
               )}
               
               <div className="flex items-center justify-between mb-3">
-                <span className="text-2xl font-bold text-blue-800">{rate.currency}</span>
-                <span className="text-lg font-semibold">{rate.symbol || rate.currency}</span>
+                <span className="text-xl sm:text-2xl font-bold text-blue-800">{rate.currency}</span>
+                <span className="text-base sm:text-lg font-semibold text-blue-600">{rate.symbol || rate.currency}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">1 {rate.currency} =</span>
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <span className="text-sm text-gray-600 whitespace-nowrap">1 {rate.currency} =</span>
                 <input
                   type="number"
                   step="0.01"
                   key={`input-${rate.currency}-${rate.rateToEGP}`}
                   defaultValue={rate.rateToEGP}
                   onBlur={(e) => {
-                    if (e.target.value !== rate.rateToEGP.toString()) {
-                      handleUpdateRate(rate.currency, e.target.value)
+                    const newValue = parseFloat(e.target.value)
+                    if (!isNaN(newValue) && newValue > 0 && newValue !== rate.rateToEGP) {
+                      handleUpdateRate(rate.currency, newValue)
+                    } else if (isNaN(newValue) || newValue <= 0) {
+                      e.target.value = rate.rateToEGP
+                      toast.error('يرجى إدخال قيمة صحيحة')
                     }
                   }}
                   onKeyDown={(e) => {
@@ -261,9 +327,10 @@ const Settings = () => {
                       e.target.blur()
                     }
                   }}
-                  className="w-24 px-3 py-2 border-2 border-blue-300 rounded-lg text-center font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-24 px-3 py-2 border-2 border-blue-300 rounded-lg text-center font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  min="0.01"
                 />
-                <span className="text-sm text-gray-600">ج.م</span>
+                <span className="text-sm text-gray-600 whitespace-nowrap">ج.م</span>
               </div>
               {!rate.source && (
                 <div className="mt-2 text-xs text-gray-500 text-center">
@@ -271,8 +338,9 @@ const Settings = () => {
                 </div>
               )}
             </motion.div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
         
         {/* Add New Currency Button */}
         <div className="mt-4">
@@ -365,12 +433,18 @@ const Settings = () => {
           type="danger"
         />
         
-        <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-          <p className="text-sm text-amber-800 flex items-start gap-2">
-            <span className="text-lg">⚠️</span>
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+          <p className="text-sm text-blue-800 flex items-start gap-2 mb-2">
+            <span className="text-lg">💡</span>
             <span>
-              <strong>ملاحظة مهمة:</strong> تحديث أسعار الصرف يؤثر فقط على الحجوزات الجديدة. 
-              الحجوزات المسجلة سابقاً تحتفظ بسعر الصرف الذي كان وقت إنشائها ولن تتأثر بالتحديث.
+              <strong>معلومة:</strong> تحديث أسعار الصرف يؤثر فقط على الحجوزات الجديدة. 
+              الحجوزات المسجلة سابقاً تحتفظ بسعر الصرف الذي كان وقت إنشائها.
+            </span>
+          </p>
+          <p className="text-xs text-blue-700 flex items-start gap-2">
+            <span>ℹ️</span>
+            <span>
+              إذا لم تظهر العملات، تأكد من تشغيل Backend أو تحقق من اتصالك بالإنترنت.
             </span>
           </p>
         </div>
