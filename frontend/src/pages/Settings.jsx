@@ -12,7 +12,9 @@ const Settings = () => {
   const [currencyRates, setCurrencyRates] = useState([
     { currency: 'USD', rateToEGP: 50, symbol: '$', source: null },
     { currency: 'EUR', rateToEGP: 54, symbol: '€', source: null },
-    { currency: 'GBP', rateToEGP: 63, symbol: '£', source: null }
+    { currency: 'GBP', rateToEGP: 63, symbol: '£', source: null },
+    { currency: 'SAR', rateToEGP: 13.33, symbol: 'ر.س', source: null },
+    { currency: 'AED', rateToEGP: 13.6, symbol: 'د.إ', source: null }
   ])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -27,7 +29,86 @@ const Settings = () => {
 
   useEffect(() => {
     fetchData()
+    // Auto-refresh rates from internet on component mount
+    autoRefreshRatesFromInternet()
   }, [])
+
+  // Auto-refresh currency rates from internet (direct API call, no backend needed)
+  const autoRefreshRatesFromInternet = async () => {
+    try {
+      // Try to fetch from free exchange rate API
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD')
+      if (!response.ok) throw new Error('API request failed')
+      
+      const data = await response.json()
+      const egpRate = data.rates?.EGP || 50
+      
+      // Calculate rates for other currencies based on USD
+      const newRates = [
+        { 
+          currency: 'USD', 
+          rateToEGP: parseFloat(egpRate.toFixed(2)), 
+          symbol: '$', 
+          source: 'exchangerate-api.com',
+          lastUpdated: new Date().toISOString()
+        }
+      ]
+      
+      // Calculate EUR, GBP, SAR, AED based on USD rates
+      if (data.rates?.EUR) {
+        newRates.push({
+          currency: 'EUR',
+          rateToEGP: parseFloat((egpRate / data.rates.EUR).toFixed(2)),
+          symbol: '€',
+          source: 'exchangerate-api.com',
+          lastUpdated: new Date().toISOString()
+        })
+      }
+      
+      if (data.rates?.GBP) {
+        newRates.push({
+          currency: 'GBP',
+          rateToEGP: parseFloat((egpRate / data.rates.GBP).toFixed(2)),
+          symbol: '£',
+          source: 'exchangerate-api.com',
+          lastUpdated: new Date().toISOString()
+        })
+      }
+      
+      // SAR and AED are typically fixed relative to USD (approximately)
+      if (egpRate) {
+        newRates.push({
+          currency: 'SAR',
+          rateToEGP: parseFloat((egpRate / 3.75).toFixed(2)),
+          symbol: 'ر.س',
+          source: 'exchangerate-api.com',
+          lastUpdated: new Date().toISOString()
+        })
+        
+        newRates.push({
+          currency: 'AED',
+          rateToEGP: parseFloat((egpRate / 3.67).toFixed(2)),
+          symbol: 'د.إ',
+          source: 'exchangerate-api.com',
+          lastUpdated: new Date().toISOString()
+        })
+      }
+      
+      // Update rates if we got new data
+      if (newRates.length > 0) {
+        // Merge with existing rates, keeping manually added ones
+        setCurrencyRates(prevRates => {
+          const existingCurrencies = prevRates.map(r => r.currency)
+          const manuallyAdded = prevRates.filter(r => !newRates.find(nr => nr.currency === r.currency))
+          return [...newRates, ...manuallyAdded]
+        })
+        setLastUpdated(new Date())
+      }
+    } catch (error) {
+      console.error('Auto-refresh rates failed:', error)
+      // Silently fail - user can manually refresh
+    }
+  }
 
   const fetchData = async () => {
     try {
@@ -44,7 +125,9 @@ const Settings = () => {
             data: [
               { currency: 'USD', rateToEGP: 50, symbol: '$', source: null },
               { currency: 'EUR', rateToEGP: 54, symbol: '€', source: null },
-              { currency: 'GBP', rateToEGP: 63, symbol: '£', source: null }
+              { currency: 'GBP', rateToEGP: 63, symbol: '£', source: null },
+              { currency: 'SAR', rateToEGP: 13.33, symbol: 'ر.س', source: null },
+              { currency: 'AED', rateToEGP: 13.6, symbol: 'د.إ', source: null }
             ] 
           }
         })
@@ -57,7 +140,9 @@ const Settings = () => {
         rates = [
           { currency: 'USD', rateToEGP: 50, symbol: '$', source: null },
           { currency: 'EUR', rateToEGP: 54, symbol: '€', source: null },
-          { currency: 'GBP', rateToEGP: 63, symbol: '£', source: null }
+          { currency: 'GBP', rateToEGP: 63, symbol: '£', source: null },
+          { currency: 'SAR', rateToEGP: 13.33, symbol: 'ر.س', source: null },
+          { currency: 'AED', rateToEGP: 13.6, symbol: 'د.إ', source: null }
         ]
       }
       setCurrencyRates(rates)
@@ -73,7 +158,9 @@ const Settings = () => {
       setCurrencyRates([
         { currency: 'USD', rateToEGP: 50, symbol: '$', source: null },
         { currency: 'EUR', rateToEGP: 54, symbol: '€', source: null },
-        { currency: 'GBP', rateToEGP: 63, symbol: '£', source: null }
+        { currency: 'GBP', rateToEGP: 63, symbol: '£', source: null },
+        { currency: 'SAR', rateToEGP: 13.33, symbol: 'ر.س', source: null },
+        { currency: 'AED', rateToEGP: 13.6, symbol: 'د.إ', source: null }
       ])
     } finally {
       setLoading(false)
@@ -83,30 +170,91 @@ const Settings = () => {
   const handleRefreshFromInternet = async () => {
     setRefreshing(true)
     try {
-      const response = await currencyAPI.refreshFromInternet()
-      if (response.data?.success) {
-        toast.success('تم تحديث أسعار الصرف من الإنترنت بنجاح! 🌐')
-        setLastUpdated(new Date())
-        // Reload the rates after a short delay
-        setTimeout(() => {
-          fetchData()
-        }, 500)
-      } else {
-        toast.error(response.data?.error || 'فشل في تحديث الأسعار')
+      // Try backend first, if available
+      try {
+        const response = await currencyAPI.refreshFromInternet()
+        if (response.data?.success) {
+          toast.success('تم تحديث أسعار الصرف من الإنترنت بنجاح! 🌐')
+          setLastUpdated(new Date())
+          setTimeout(() => {
+            fetchData()
+          }, 500)
+          setRefreshing(false)
+          return
+        }
+      } catch (backendError) {
+        // Backend not available, use direct API
+        console.log('Backend not available, using direct API')
       }
+      
+      // Direct API call (no backend needed)
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD')
+      if (!response.ok) throw new Error('API request failed')
+      
+      const data = await response.json()
+      const egpRate = data.rates?.EGP || 50
+      
+      const newRates = [
+        { 
+          currency: 'USD', 
+          rateToEGP: parseFloat(egpRate.toFixed(2)), 
+          symbol: '$', 
+          source: 'exchangerate-api.com',
+          lastUpdated: new Date().toISOString()
+        }
+      ]
+      
+      if (data.rates?.EUR) {
+        newRates.push({
+          currency: 'EUR',
+          rateToEGP: parseFloat((egpRate / data.rates.EUR).toFixed(2)),
+          symbol: '€',
+          source: 'exchangerate-api.com',
+          lastUpdated: new Date().toISOString()
+        })
+      }
+      
+      if (data.rates?.GBP) {
+        newRates.push({
+          currency: 'GBP',
+          rateToEGP: parseFloat((egpRate / data.rates.GBP).toFixed(2)),
+          symbol: '£',
+          source: 'exchangerate-api.com',
+          lastUpdated: new Date().toISOString()
+        })
+      }
+      
+      if (egpRate) {
+        newRates.push({
+          currency: 'SAR',
+          rateToEGP: parseFloat((egpRate / 3.75).toFixed(2)),
+          symbol: 'ر.س',
+          source: 'exchangerate-api.com',
+          lastUpdated: new Date().toISOString()
+        })
+        
+        newRates.push({
+          currency: 'AED',
+          rateToEGP: parseFloat((egpRate / 3.67).toFixed(2)),
+          symbol: 'د.إ',
+          source: 'exchangerate-api.com',
+          lastUpdated: new Date().toISOString()
+        })
+      }
+      
+      // Merge with existing manually added currencies
+      setCurrencyRates(prevRates => {
+        const existingCurrencies = newRates.map(r => r.currency)
+        const manuallyAdded = prevRates.filter(r => !existingCurrencies.includes(r.currency))
+        return [...newRates, ...manuallyAdded]
+      })
+      
+      setLastUpdated(new Date())
+      toast.success('تم تحديث أسعار الصرف من الإنترنت بنجاح! 🌐')
+      
     } catch (error) {
       console.error('Error refreshing rates:', error)
-      let errorMsg = 'فشل في الاتصال بالإنترنت.'
-      
-      if (error.response) {
-        errorMsg = error.response.data?.error || 'فشل في تحديث الأسعار من الخادم'
-      } else if (error.request) {
-        errorMsg = 'لا يمكن الوصول إلى الخادم. تأكد من تشغيل Backend أو اتصالك بالإنترنت.'
-      } else {
-        errorMsg = error.message || 'حدث خطأ غير متوقع'
-      }
-      
-      toast.error(errorMsg)
+      toast.error('فشل في الاتصال بخدمة أسعار الصرف. تحقق من اتصالك بالإنترنت.')
     } finally {
       setRefreshing(false)
     }
@@ -198,6 +346,23 @@ const Settings = () => {
     return standard.includes(currency)
   }
 
+  // Auto-refresh rates every 30 minutes (only when component is mounted and user is on settings page)
+  useEffect(() => {
+    // Wait 5 seconds after component mount before starting auto-refresh
+    const timeoutId = setTimeout(() => {
+      const interval = setInterval(() => {
+        autoRefreshRatesFromInternet()
+      }, 30 * 60 * 1000) // 30 minutes
+      
+      // Store interval ID for cleanup
+      return () => clearInterval(interval)
+    }, 5000)
+    
+    return () => {
+      clearTimeout(timeoutId)
+    }
+  }, [])
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-booking-blue">الإعدادات</h1>
@@ -265,12 +430,12 @@ const Settings = () => {
         ) : currencyRates.length === 0 ? (
           <div className="text-center py-8 bg-yellow-50 border-2 border-yellow-200 rounded-xl">
             <p className="text-yellow-800 font-bold mb-2">⚠️ لا توجد عملات متاحة</p>
-            <p className="text-sm text-yellow-700 mb-4">تأكد من اتصال Backend بالإنترنت</p>
+            <p className="text-sm text-yellow-700 mb-4">اضغط على "تحديث من الإنترنت" لتحميل الأسعار</p>
             <button
-              onClick={fetchData}
+              onClick={handleRefreshFromInternet}
               className="bg-yellow-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-yellow-600 transition-colors"
             >
-              إعادة المحاولة
+              تحديث من الإنترنت
             </button>
           </div>
         ) : (
