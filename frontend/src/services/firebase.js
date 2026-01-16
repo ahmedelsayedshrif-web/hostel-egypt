@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
-import { getFirestore, collection } from 'firebase/firestore'
+import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query } from 'firebase/firestore'
 
 // Firebase configuration
 // TODO: Replace with your actual Firebase config
@@ -19,12 +19,89 @@ const app = initializeApp(firebaseConfig)
 const storage = getStorage(app)
 const db = getFirestore(app)
 
-// Firestore collection references
-export const apartmentsFirestore = collection(db, 'apartments')
-export const bookingsFirestore = collection(db, 'bookings')
-export const partnersFirestore = collection(db, 'partners')
-export const settingsFirestore = collection(db, 'settings')
-export const expensesFirestore = collection(db, 'expenses')
+// Helper function to create Firestore service object
+const createFirestoreService = (collectionName) => {
+  const colRef = collection(db, collectionName)
+  
+  return {
+    subscribe: (callback) => {
+      return onSnapshot(colRef, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
+          _id: doc.id,
+          id: doc.id,
+          ...doc.data()
+        }))
+        callback(data)
+      }, (error) => {
+        console.error(`Firestore error in ${collectionName}:`, error)
+        callback([])
+      })
+    },
+    getAll: async () => {
+      try {
+        const snapshot = await getDocs(colRef)
+        return snapshot.docs.map(doc => ({
+          _id: doc.id,
+          id: doc.id,
+          ...doc.data()
+        }))
+      } catch (error) {
+        console.error(`Error getting all ${collectionName}:`, error)
+        return []
+      }
+    },
+    getById: async (id) => {
+      try {
+        const docRef = doc(db, collectionName, id)
+        const docSnap = await getDoc(docRef)
+        if (docSnap.exists()) {
+          return { _id: docSnap.id, id: docSnap.id, ...docSnap.data() }
+        }
+        return null
+      } catch (error) {
+        console.error(`Error getting ${collectionName} by id:`, error)
+        return null
+      }
+    },
+    create: async (id, data) => {
+      try {
+        const docRef = doc(db, collectionName, id)
+        await setDoc(docRef, data)
+        return { _id: id, id, ...data }
+      } catch (error) {
+        console.error(`Error creating ${collectionName}:`, error)
+        throw error
+      }
+    },
+    update: async (id, data) => {
+      try {
+        const docRef = doc(db, collectionName, id)
+        await updateDoc(docRef, data)
+        return { _id: id, id, ...data }
+      } catch (error) {
+        console.error(`Error updating ${collectionName}:`, error)
+        throw error
+      }
+    },
+    delete: async (id) => {
+      try {
+        const docRef = doc(db, collectionName, id)
+        await deleteDoc(docRef)
+        return true
+      } catch (error) {
+        console.error(`Error deleting ${collectionName}:`, error)
+        throw error
+      }
+    }
+  }
+}
+
+// Firestore service objects
+export const apartmentsFirestore = createFirestoreService('apartments')
+export const bookingsFirestore = createFirestoreService('bookings')
+export const partnersFirestore = createFirestoreService('partners')
+export const settingsFirestore = createFirestoreService('settings')
+export const expensesFirestore = createFirestoreService('expenses')
 export { db }
 
 /**
