@@ -38,24 +38,24 @@ if (typeof window !== 'undefined') {
       setTimeout(() => {
         window.location.reload(true)
       }, 100)
-      return // Stop execution until reload
+      // Don't continue execution - reload will happen
+    } else {
+      // Store current version and build time
+      localStorage.setItem('app-version', currentVersion)
+      localStorage.setItem('app-build-time', new Date().toISOString())
+      
+      // Periodic check for updates (every 5 minutes)
+      setInterval(() => {
+        const checkVersion = versionMeta?.getAttribute('content') || Date.now().toString()
+        const stored = localStorage.getItem('app-version')
+        if (stored && stored !== checkVersion) {
+          console.log('🔄 Update detected during runtime, reloading...')
+          localStorage.clear()
+          sessionStorage.clear()
+          window.location.reload(true)
+        }
+      }, 5 * 60 * 1000) // Check every 5 minutes
     }
-    
-    // Store current version and build time
-    localStorage.setItem('app-version', currentVersion)
-    localStorage.setItem('app-build-time', new Date().toISOString())
-    
-    // Periodic check for updates (every 5 minutes)
-    setInterval(() => {
-      const checkVersion = versionMeta?.getAttribute('content') || Date.now().toString()
-      const stored = localStorage.getItem('app-version')
-      if (stored && stored !== checkVersion) {
-        console.log('🔄 Update detected during runtime, reloading...')
-        localStorage.clear()
-        sessionStorage.clear()
-        window.location.reload(true)
-      }
-    }, 5 * 60 * 1000) // Check every 5 minutes
   } catch (error) {
     console.error('Error in version check:', error)
   }
