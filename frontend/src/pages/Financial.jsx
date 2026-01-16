@@ -800,6 +800,11 @@ const Financial = () => {
     // CRITICAL: All amounts must be aggregated directly in EGP (not USD first)
     const paymentMethods = {}
     let totalPaymentsCheck = 0 // For validation
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8f58bb7d-6eb4-4526-ac36-e1339a0843b1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Financial.jsx:803',message:'Payment methods calculation started',data:{bookingsCount:filtered.length,hasPaymentsArray:filtered.filter(b=>b.payments&&Array.isArray(b.payments)&&b.payments.length>0).length,hasFallback:filtered.filter(b=>!b.payments||!Array.isArray(b.payments)||b.payments.length===0).length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'ALL'})}).catch(()=>{});
+    // #endregion
+    
     filtered.forEach(b => {
       // Calculate split ratio for cross-month bookings (same as revenue split)
       const checkInDateForPaymentSplit = safeDate(b.checkIn)
@@ -859,6 +864,10 @@ const Financial = () => {
             const lockedRates = b.exchangeRateAtBooking || {}
             const usdRate = lockedRates.USD || safeCurrencyRates.USD || 50
             
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/8f58bb7d-6eb4-4526-ac36-e1339a0843b1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Financial.jsx:856',message:'Payment processing - BEFORE conversion',data:{bookingId:b._id||b.id,method,paymentAmount,paymentCurrency,originalCurrency:payment.currency,hasLockedRates:!!b.exchangeRateAtBooking,lockedRates,usdRate,currentRates:safeCurrencyRates.USD,splitRatio:paymentSplitRatio},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,F'})}).catch(()=>{});
+            // #endregion
+            
             // Convert payment amount directly to EGP based on its currency
             // All payments must be aggregated in EGP before summing
             let paymentInEGP = 0
@@ -879,6 +888,10 @@ const Financial = () => {
             // IMPORTANT: Apply split ratio for cross-month bookings (after converting to EGP)
             const splitPaymentInEGP = paymentInEGP * paymentSplitRatio
             
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/8f58bb7d-6eb4-4526-ac36-e1339a0843b1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Financial.jsx:877',message:'Payment processing - AFTER conversion',data:{bookingId:b._id||b.id,method,paymentAmount,paymentCurrency,paymentInEGP,splitRatio:paymentSplitRatio,splitPaymentInEGP,currentTotal:paymentMethods[method]||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,D'})}).catch(()=>{});
+            // #endregion
+            
             if (!paymentMethods[method]) paymentMethods[method] = 0
             paymentMethods[method] += splitPaymentInEGP
             totalPaymentsCheck += splitPaymentInEGP
@@ -892,6 +905,10 @@ const Financial = () => {
         const { currency: bookingCurrency } = detectBookingOriginalCurrency(b, safeCurrencyRates)
         const lockedRates = b.exchangeRateAtBooking || {}
         const usdRate = lockedRates.USD || safeCurrencyRates.USD || 50
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8f58bb7d-6eb4-4526-ac36-e1339a0843b1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Financial.jsx:888',message:'Fallback payment processing - BEFORE',data:{bookingId:b._id||b.id,method,bookingCurrency,hasPaymentsArray:!!(b.payments&&Array.isArray(b.payments)&&b.payments.length>0),hasLockedRates:!!b.exchangeRateAtBooking,lockedRates,usdRate,splitRatio:paymentSplitRatio},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
         
         // IMPORTANT: Get paid amount correctly
         // If booking has payments array but we're in fallback (shouldn't happen, but safe guard)
@@ -927,6 +944,10 @@ const Financial = () => {
           // Convert from USD to EGP using locked rate
           // This reconstructs the original payment amount in EGP
           paidInEGP = paidInUSD * usdRate
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/8f58bb7d-6eb4-4526-ac36-e1339a0843b1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Financial.jsx:929',message:'Fallback payment - AFTER conversion',data:{bookingId:b._id||b.id,method,paidInUSD,usdRate,paidInEGP,splitRatio:paymentSplitRatio,splitPaidInEGP:paidInEGP*paymentSplitRatio},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,F'})}).catch(()=>{});
+          // #endregion
         }
         
         // IMPORTANT: Apply split ratio for cross-month bookings (after converting to EGP)
@@ -949,6 +970,10 @@ const Financial = () => {
       difference: Math.abs(totalPaymentsCheck - totalPaidInEGP),
       bookingsProcessed: filtered.length
     })
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8f58bb7d-6eb4-4526-ac36-e1339a0843b1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Financial.jsx:950',message:'Payment methods FINAL summary',data:{paymentMethods,instapay:paymentMethods.instapay||0,cash:paymentMethods.cash||0,visa:paymentMethods.visa||0,vodafone:paymentMethods.vodafone||0,totalCalculated:totalPaymentsCheck,totalPaidAmountInEGP,difference:Math.abs(totalPaymentsCheck-totalPaidInEGP),bookingsProcessed:filtered.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'ALL'})}).catch(()=>{});
+    // #endregion
     
     // Additional validation: Check if totals match
     if (Math.abs(totalPaymentsCheck - totalPaidInEGP) > 1) {
