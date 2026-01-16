@@ -853,47 +853,49 @@ const Financial = () => {
             const paymentAmount = typeof payment.amount === 'number' ? payment.amount : (parseFloat(payment.amount || 0) || 0)
             
             // CRITICAL: Smart currency detection for old data
-            // If currency is missing or USD, detect based on amount value
+            // PROBLEM: Old data may have EGP amounts stored with currency='USD'
+            // SOLUTION: Always check if amount makes sense for the declared currency
             let originalPaymentCurrency = (payment.currency && payment.currency.trim() !== '') ? payment.currency : null
+            
+            // IMPORTANT: Use locked exchange rate from booking if available
+            const lockedRates = b.exchangeRateAtBooking || {}
+            const usdRate = lockedRates.USD || safeCurrencyRates.USD || 50
             
             // Auto-detect currency if missing or suspicious (USD might be wrong for old data)
             if (!originalPaymentCurrency || originalPaymentCurrency === 'USD') {
-              // Smart detection based on amount value:
-              // - Very large amounts (> 50) are almost certainly EGP (e.g., 746, 9802, 4000, 3000)
-              // - Very small amounts (< 1) are likely USD (e.g., 0.15, 0.30)
-              // - Medium amounts (1-50): check booking currency and amount pattern
-              const usdRate = safeCurrencyRates.USD || 50
+              // CRITICAL: If amount is declared as USD but value is large, it's likely EGP
+              // USD payments are typically small (15.80, 30.13, 84.73, etc.)
+              // EGP payments are typically large (746, 9802, 4000, 3000, etc.)
               
-              if (paymentAmount > 50) {
-                // Large amount (> 50) = almost certainly EGP
-                // USD payments are typically small (15.80, 30.13, etc.)
+              if (paymentAmount > 100) {
+                // Large amount (> 100) = almost certainly EGP, not USD
+                // Even if currency='USD', treat as EGP
                 originalPaymentCurrency = 'EGP'
               } else if (paymentAmount < 1) {
                 // Very small amount (< 1) = likely USD
                 originalPaymentCurrency = 'USD'
               } else {
-                // Medium amount (1-50): check if it makes sense as USD
-                // If amount * exchangeRate gives a reasonable EGP value, it might be USD
-                // But if booking currency is EGP, prefer EGP
+                // Medium amount (1-100): validate against booking currency
                 const { currency: bookingCurrency } = detectBookingOriginalCurrency(b, safeCurrencyRates)
+                
+                // If booking is in EGP, payment is likely EGP too
                 if (bookingCurrency === 'EGP') {
                   originalPaymentCurrency = 'EGP'
                 } else {
-                  // Check if amount makes sense as USD (would give reasonable EGP)
+                  // Check if converting USD to EGP makes sense
+                  // If 746 USD * 47.2 = 35,211 EGP, that's too large for a single payment
+                  // Real USD payments are small (15-100 USD range)
                   const asEGP = paymentAmount * usdRate
-                  // If converting to EGP gives a very large number (> 1000), it's probably already EGP
-                  if (asEGP > 1000) {
+                  if (asEGP > 2000) {
+                    // Converting gives very large EGP = probably already EGP
                     originalPaymentCurrency = 'EGP'
                   } else {
+                    // Reasonable conversion = probably USD
                     originalPaymentCurrency = 'USD'
                   }
                 }
               }
             }
-            
-            // IMPORTANT: Use locked exchange rate from booking if available (locked rate preserves booking value)
-            const lockedRates = b.exchangeRateAtBooking || {}
-            const usdRate = lockedRates.USD || safeCurrencyRates.USD || 50
             
             // CRITICAL: Convert ALL payments to EGP regardless of original currency
             // Even if customer paid in USD, we aggregate everything in EGP
@@ -918,7 +920,7 @@ const Financial = () => {
             const splitPaymentInEGP = paymentInEGP * paymentSplitRatio
             
             // #region agent log
-            console.log(`[DEBUG Payment] Booking ${b._id || b.id}: method=${method}, amount=${paymentAmount}, currency=${originalPaymentCurrency}, inEGP=${paymentInEGP}, split=${paymentSplitRatio}, final=${splitPaymentInEGP}`)
+            console.log(`[DEBUG Payment] Booking ${b._id || b.id || 'unknown'}: method=${method}, originalAmount=${paymentAmount}, originalCurrency=${payment.currency || 'null'}, detectedCurrency=${originalPaymentCurrency}, convertedToEGP=${paymentInEGP}, splitRatio=${paymentSplitRatio}, finalEGP=${splitPaymentInEGP}, usdRate=${usdRate}`)
             // #endregion
             
             if (!paymentMethods[method]) paymentMethods[method] = 0
