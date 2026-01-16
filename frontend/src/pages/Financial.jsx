@@ -824,7 +824,15 @@ const Financial = () => {
 
             // CRITICAL: Convert ALL payments to EGP regardless of original currency
             // Even if customer paid in USD, we aggregate everything in EGP
-            // This is the requirement: all payments must be in EGP for aggregation
+            // This is the requirement: all payments
+            let normalizedMethod = payment.method || 'unknown'
+            const lowerMethod = normalizedMethod.toLowerCase().trim()
+            if (lowerMethod.includes('vodafone') || lowerMethod.includes('فودافون')) normalizedMethod = 'Vodafone Cash'
+            else if (lowerMethod.includes('visa') || lowerMethod.includes('credit') || lowerMethod.includes('card') || lowerMethod.includes('فيزا')) normalizedMethod = 'Visa'
+            else if (lowerMethod.includes('insta') || lowerMethod.includes('انستا')) normalizedMethod = 'InstaPay'
+            else if (lowerMethod === 'cash' || lowerMethod === 'كاش' || lowerMethod === 'نقد') normalizedMethod = 'Cash'
+            else if (lowerMethod.includes('bank') || lowerMethod.includes('بنك')) normalizedMethod = 'Bank Transfer'
+
             let paymentInEGP = 0
 
             if (!originalPaymentCurrency || originalPaymentCurrency === 'EGP') {
@@ -845,11 +853,12 @@ const Financial = () => {
             const splitPaymentInEGP = paymentInEGP * paymentSplitRatio
 
             // #region agent log
-            console.log(`[DEBUG Payment] Booking ${b._id || b.id || 'unknown'}: method=${method}, originalAmount=${paymentAmount}, originalCurrency=${payment.currency || 'null'}, detectedCurrency=${originalPaymentCurrency}, convertedToEGP=${paymentInEGP}, splitRatio=${paymentSplitRatio}, finalEGP=${splitPaymentInEGP}, usdRate=${usdRate}`)
+            // #region agent log
+            // console.log(`[DEBUG Payment] Booking ${b._id}: method=${normalizedMethod}...`)
             // #endregion
 
-            if (!paymentMethods[method]) paymentMethods[method] = 0
-            paymentMethods[method] += splitPaymentInEGP
+            if (!paymentMethods[normalizedMethod]) paymentMethods[normalizedMethod] = 0
+            paymentMethods[normalizedMethod] += splitPaymentInEGP
             totalPaymentsCheck += splitPaymentInEGP
           }
         })

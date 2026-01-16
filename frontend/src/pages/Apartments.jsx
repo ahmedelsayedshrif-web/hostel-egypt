@@ -758,7 +758,7 @@ const Apartments = () => {
     const safeBookings = Array.isArray(apartmentBookings) ? apartmentBookings : []
     const totalRevenue = safeBookings.reduce((sum, b) => {
       const amount = b?.totalBookingPrice || b?.totalAmountUSD || b?.totalAmount || 0
-      return sum + (typeof amount === 'number' ? amount : parseFloat(amount) || 0)
+      return sum + (typeof amount === 'number' ? Math.max(0, amount) : Math.max(0, parseFloat(amount) || 0))
     }, 0)
     const totalOwnerAmount = safeBookings.reduce((sum, b) => sum + (b?.ownerAmount || 0), 0)
     const totalPlatformFees = safeBookings.reduce((sum, b) => sum + (b?.platformCommission || 0), 0)
