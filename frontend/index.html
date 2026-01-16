@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Cache Control Headers -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    
+    <!-- App Version for Cache Busting -->
+    <meta name="app-version" content="__APP_VERSION__" />
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -12,5 +21,18 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Cache Busting Script -->
+    <script>
+      // Force reload on version change
+      const currentVersion = '__APP_VERSION__';
+      const storedVersion = localStorage.getItem('app-version');
+      if (storedVersion && storedVersion !== currentVersion) {
+        localStorage.clear();
+        sessionStorage.clear();
+        location.reload();
+      }
+      localStorage.setItem('app-version', currentVersion);
+    </script>
   </body>
 </html>
