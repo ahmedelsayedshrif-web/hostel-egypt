@@ -22,7 +22,7 @@ const db = getFirestore(app)
 // Helper function to create Firestore service object
 const createFirestoreService = (collectionName) => {
   const colRef = collection(db, collectionName)
-  
+
   return {
     subscribe: (callback) => {
       return onSnapshot(colRef, (snapshot) => {
@@ -100,8 +100,42 @@ const createFirestoreService = (collectionName) => {
 export const apartmentsFirestore = createFirestoreService('apartments')
 export const bookingsFirestore = createFirestoreService('bookings')
 export const partnersFirestore = createFirestoreService('partners')
-export const settingsFirestore = createFirestoreService('settings')
 export const expensesFirestore = createFirestoreService('expenses')
+
+// Settings Firestore with special currency rates listener
+export const settingsFirestore = {
+  ...createFirestoreService('settings'),
+  listenToCurrencyRates: (callback) => {
+    const docRef = doc(db, 'settings', 'currencyRates')
+    return onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        callback(docSnap.data())
+      } else {
+        // Return default rates if document doesn't exist
+        callback({ USD: 50, EUR: 54, GBP: 62 })
+      }
+    }, (error) => {
+      console.error('Error listening to currency rates:', error)
+      callback({ USD: 50, EUR: 54, GBP: 62 })
+    })
+  },
+  getCurrencyRates: async () => {
+    try {
+      const docRef = doc(db, 'settings', 'currencyRates')
+      const docSnap = await getDoc(docRef)
+      if (docSnap.exists()) {
+        return docSnap.data()
+      } else {
+        // Return default rates if document doesn't exist
+        return { USD: 50, EUR: 54, GBP: 62 }
+      }
+    } catch (error) {
+      console.error('Error getting currency rates:', error)
+      return { USD: 50, EUR: 54, GBP: 62 }
+    }
+  }
+}
+
 export { db }
 
 /**
@@ -118,13 +152,13 @@ export const uploadImageToFirebase = async (file, folder = 'inventory_images', o
     const randomStr = Math.random().toString(36).substring(2, 15)
     const fileExtension = file.name.split('.').pop()
     const fileName = `${folder}/${timestamp}_${randomStr}.${fileExtension}`
-    
+
     // Create storage reference
     const storageRef = ref(storage, fileName)
-    
+
     // Create upload task
     const uploadTask = uploadBytesResumable(storageRef, file)
-    
+
     // Return promise that resolves with download URL
     return new Promise((resolve, reject) => {
       // Listen for state changes
@@ -173,10 +207,10 @@ export const deleteImageFromFirebase = async (url) => {
     if (!pathMatch) {
       throw new Error('Invalid Firebase Storage URL')
     }
-    
+
     const filePath = decodeURIComponent(pathMatch[1])
     const fileRef = ref(storage, filePath)
-    
+
     // Delete file
     const { deleteObject } = await import('firebase/storage')
     await deleteObject(fileRef)
