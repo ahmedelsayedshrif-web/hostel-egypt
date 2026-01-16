@@ -901,6 +901,10 @@ const Financial = () => {
             // IMPORTANT: Apply split ratio for cross-month bookings (after converting to EGP)
             const splitPaymentInEGP = paymentInEGP * paymentSplitRatio
             
+            // #region agent log
+            console.log(`[DEBUG Payment] Booking ${b._id || b.id}: method=${method}, amount=${paymentAmount}, currency=${originalPaymentCurrency}, inEGP=${paymentInEGP}, split=${paymentSplitRatio}, final=${splitPaymentInEGP}`)
+            // #endregion
+            
             if (!paymentMethods[method]) paymentMethods[method] = 0
             paymentMethods[method] += splitPaymentInEGP
             totalPaymentsCheck += splitPaymentInEGP
@@ -961,7 +965,23 @@ const Financial = () => {
     })
     
     // Validation: Log payment methods summary for debugging
+    // IMPORTANT: paidAmount is in USD, convert to EGP for comparison
     const totalPaidInEGP = paidAmount * (safeCurrencyRates.USD || 50)
+    
+    // #region agent log
+    console.log('[DEBUG Summary] Payment Methods Breakdown:', {
+      instapay: paymentMethods.instapay || 0,
+      cash: paymentMethods.cash || 0,
+      visa: paymentMethods.visa || 0,
+      vodafone: paymentMethods.vodafone || 0,
+      totalFromPayments: totalPaymentsCheck,
+      paidAmountUSD: paidAmount,
+      paidAmountEGP: totalPaidInEGP,
+      difference: Math.abs(totalPaymentsCheck - totalPaidInEGP),
+      exchangeRate: safeCurrencyRates.USD || 50
+    })
+    // #endregion
+    
     console.log('[Financial] 💳 Payment Methods Summary (EGP):', {
       instapay: paymentMethods.instapay || 0,
       cash: paymentMethods.cash || 0,
