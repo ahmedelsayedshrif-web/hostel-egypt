@@ -770,12 +770,20 @@ const Apartments = () => {
     const monthlyExpenses = Array.isArray(apartment?.monthlyExpenses) ? apartment.monthlyExpenses : []
     const totalMonthlyExpenses = monthlyExpenses.reduce((sum, e) => sum + (e?.amount || 0), 0)
 
-    // Partner calculations
+    // Calculate apartment expenses from apartmentExpenses array
+    const apartmentExpensesTotal = apartmentExpenses.reduce((sum, e) => sum + (e?.amount || 0), 0)
+
+    // Calculate net profit: Revenue - Platform Fees - Expenses
+    const revenueAfterCommission = totalRevenue - totalPlatformFees
+    const totalExpenses = totalMonthlyExpenses + apartmentExpensesTotal
+    const netProfit = revenueAfterCommission - totalExpenses
+
+    // Partner calculations - only distribute if net profit is positive
     const partners = Array.isArray(apartment?.partners) ? apartment.partners : []
     const partnerDetails = partners.map(p => ({
       name: p?.name || '',
       percentage: p?.percentage || 0,
-      totalEarnings: (totalOwnerAmount * (p?.percentage || 0) / 100)
+      totalEarnings: netProfit > 0 ? (netProfit * (p?.percentage || 0) / 100) : 0
     }))
 
     const reportDate = formatDate(new Date())
