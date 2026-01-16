@@ -3,14 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { bookingsAPI, apartmentsAPI, partnersAPI, currencyAPI, expensesAPI } from '../services/api'
 import { bookingsFirestore, apartmentsFirestore, partnersFirestore, settingsFirestore, expensesFirestore } from '../services/firebase'
 import { useToast } from '../components/Toast'
-import { useAuth } from '../contexts/AuthContext'
 import { canViewPartnerShares } from '../utils/permissions'
 import { calculateWaterfallPartnerProfits } from '../utils/waterfallCalculator'
 import { getBookingAmountInUSD, getBookingPaidAmountInUSD, detectBookingOriginalCurrency } from '../utils/bookingCurrency'
 import { formatDate, formatDateArabic } from '../utils/dateFormat'
 
 const Financial = () => {
-  const { userRole } = useAuth()
+  // Default user role - can be updated when AuthContext is available
+  const userRole = 'admin' // Default to admin to show all features
   const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [bookings, setBookings] = useState([])

@@ -166,6 +166,15 @@ export const roiAPI = {
   getByApartment: (apartmentId) => api.get(`/roi/${apartmentId}`),
 }
 
+// Expenses API
+export const expensesAPI = {
+  getAll: (params) => api.get('/expenses', { params }),
+  getById: (id) => api.get(`/expenses/${id}`),
+  create: (data) => api.post('/expenses', data),
+  update: (id, data) => api.put(`/expenses/${id}`, data),
+  delete: (id) => api.delete(`/expenses/${id}`),
+}
+
 export default api
 
 

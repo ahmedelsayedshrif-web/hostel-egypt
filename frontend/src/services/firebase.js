@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { getFirestore, collection } from 'firebase/firestore'
 
 // Firebase configuration
 // TODO: Replace with your actual Firebase config
@@ -16,6 +17,15 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig)
 const storage = getStorage(app)
+const db = getFirestore(app)
+
+// Firestore collection references
+export const apartmentsFirestore = collection(db, 'apartments')
+export const bookingsFirestore = collection(db, 'bookings')
+export const partnersFirestore = collection(db, 'partners')
+export const settingsFirestore = collection(db, 'settings')
+export const expensesFirestore = collection(db, 'expenses')
+export { db }
 
 /**
  * Upload image to Firebase Storage
