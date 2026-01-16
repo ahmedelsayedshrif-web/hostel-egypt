@@ -1,0 +1,77 @@
+{
+  "partners": [],
+  "apartments": [],
+  "bookings": [],
+  "expenses": [],
+  "currencyRates": [
+    {
+      "currency": "USD",
+      "rateToEGP": 47.59,
+      "symbol": "$",
+      "lastUpdated": "2025-12-11T09:21:02.392Z",
+      "source": "exchangerate-api.com",
+      "_id": "mj16rxhqmmt9l88rg2",
+      "createdAt": "2025-12-11T08:38:41.486Z",
+      "updatedAt": "2025-12-11T09:21:02.392Z"
+    },
+    {
+      "currency": "EUR",
+      "rateToEGP": 55.53,
+      "symbol": "€",
+      "lastUpdated": "2025-12-11T09:21:02.393Z",
+      "source": "exchangerate-api.com",
+      "_id": "mj16rxhrhyqd55n9bo",
+      "createdAt": "2025-12-11T08:38:41.487Z",
+      "updatedAt": "2025-12-11T09:21:02.393Z"
+    },
+    {
+      "currency": "GBP",
+      "rateToEGP": 63.54,
+      "symbol": "£",
+      "lastUpdated": "2025-12-11T09:21:02.394Z",
+      "source": "exchangerate-api.com",
+      "_id": "mj16rxhsnpeyr7ab08",
+      "createdAt": "2025-12-11T08:38:41.488Z",
+      "updatedAt": "2025-12-11T09:21:02.394Z"
+    },
+    {
+      "currency": "SAR",
+      "rateToEGP": 12.69,
+      "symbol": "ر.س",
+      "lastUpdated": "2025-12-11T09:21:02.408Z",
+      "source": "exchangerate-api.com",
+      "_id": "mj16rxi325csfw5xla6",
+      "createdAt": "2025-12-11T08:38:41.499Z",
+      "updatedAt": "2025-12-11T09:21:02.408Z"
+    },
+    {
+      "currency": "AED",
+      "rateToEGP": 12.97,
+      "symbol": "د.إ",
+      "lastUpdated": "2025-12-11T09:21:02.420Z",
+      "source": "exchangerate-api.com",
+      "_id": "mj16rxi35g3ycz482pu",
+      "createdAt": "2025-12-11T08:38:41.499Z",
+      "updatedAt": "2025-12-11T09:21:02.420Z"
+    }
+  ],
+  "settings": [
+    {
+      "amenities": [
+        "واي فاي",
+        "تكييف",
+        "غسالة",
+        "ثلاجة",
+        "تلفزيون",
+        "مطبخ",
+        "موقف سيارات",
+        "مسبح"
+      ],
+      "_id": "mj16yvcaa94dfit3qta",
+      "createdAt": "2025-12-11T08:44:05.290Z",
+      "updatedAt": "2025-12-11T08:44:05.290Z"
+    }
+  ],
+  "fundTransactions": [],
+  "inventory": []
+}
