@@ -787,7 +787,15 @@ const Financial = () => {
         // Process each payment separately, converting each to EGP based on its currency
         b.payments.forEach(payment => {
           if (payment && payment.method && payment.amount) {
-            const method = payment.method
+            let method = payment.method || 'unknown'
+            // Normalize payment method names for consistent aggregation
+            const m = method.toLowerCase().trim()
+            if (m.includes('vodafone') || m.includes('فودافون')) method = 'Vodafone Cash'
+            else if (m.includes('visa') || m.includes('card') || m.includes('credit') || m.includes('فيزا')) method = 'Visa'
+            else if (m.includes('insta') || m.includes('انستا')) method = 'InstaPay'
+            else if (m === 'cash' || m === 'كاش' || m === 'نقد') method = 'Cash'
+            else if (m.includes('bank') || m.includes('بنك')) method = 'Bank Transfer'
+
             const paymentAmount = typeof payment.amount === 'number' ? payment.amount : (parseFloat(payment.amount || 0) || 0)
 
             // CRITICAL: Smart currency detection for old data
