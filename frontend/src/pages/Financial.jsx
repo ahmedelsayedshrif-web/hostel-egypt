@@ -442,36 +442,15 @@ const Financial = () => {
           const checkOutMonth = checkOutDateForSplit.getMonth() + 1
           const checkOutYear = checkOutDateForSplit.getFullYear()
 
-          // If booking spans multiple months, split revenue by nights
-          if ((checkInMonth !== checkOutMonth || checkInYear !== checkOutYear) && b.numberOfNights > 0 && !filters.showAllMonths) {
-            const totalNights = b.numberOfNights || 1
-            const pricePerNight = bookingTotalUSD / totalNights
-
-            // Calculate nights in selected month
-            const monthStart = new Date(filters.year, filters.month - 1, 1)
-            const monthEnd = new Date(filters.year, filters.month, 0, 23, 59, 59, 999)
-            monthStart.setHours(0, 0, 0, 0)
-
-            let nightsInSelectedMonth = 0
-            let currentDate = new Date(checkInDateForSplit)
-            currentDate.setHours(0, 0, 0, 0)
-            const endDate = new Date(checkOutDateForSplit)
-            endDate.setHours(0, 0, 0, 0)
-
-            while (currentDate < endDate) {
-              const currentMonth = currentDate.getMonth() + 1
-              const currentYear = currentDate.getFullYear()
-
-              if (currentMonth === filters.month && currentYear === filters.year) {
-                nightsInSelectedMonth++
-              }
-
-              currentDate.setDate(currentDate.getDate() + 1)
+          // IMPORTANT: For cross-month bookings, count full revenue in checkout month
+          // This matches the payment methods and paid amount logic
+          if ((checkInMonth !== checkOutMonth || checkInYear !== checkOutYear) && !filters.showAllMonths) {
+            // Check if checkout is in the selected month
+            if (checkOutMonth === filters.month && checkOutYear === filters.year) {
+              // Booking ends in this month - count full revenue
+              totalRevenue += bookingTotalUSD
             }
-
-            // Use split revenue for this month
-            const monthRevenue = nightsInSelectedMonth * pricePerNight
-            totalRevenue += monthRevenue
+            // Otherwise don't count (revenue = 0 for this month)
           } else {
             // Single month booking or showing all months - use full amount
             totalRevenue += bookingTotalUSD
@@ -524,45 +503,20 @@ const Financial = () => {
         const checkOutMonth = checkOutDateForSplit.getMonth() + 1
         const checkOutYear = checkOutDateForSplit.getFullYear()
 
-        // If booking spans multiple months, split paid/remaining proportionally (same as Dashboard)
-        if ((checkInMonth !== checkOutMonth || checkInYear !== checkOutYear) && b.numberOfNights > 0 && !filters.showAllMonths) {
-          const totalNights = b.numberOfNights || 1
-          const nightsInSelectedMonth = (() => {
-            let nights = 0
-            let currentDate = new Date(checkInDateForSplit)
-            currentDate.setHours(0, 0, 0, 0)
-            const endDate = new Date(checkOutDateForSplit)
-            endDate.setHours(0, 0, 0, 0)
-
-            while (currentDate < endDate) {
-              const currentMonth = currentDate.getMonth() + 1
-              const currentYear = currentDate.getFullYear()
-              if (currentMonth === filters.month && currentYear === filters.year) {
-                nights++
-              }
-              currentDate.setDate(currentDate.getDate() + 1)
-            }
-            return nights
-          })()
-
-          // Split paid and remaining proportionally by nights
-          const paidRatio = nightsInSelectedMonth / totalNights
-          // IMPORTANT: Calculate monthTotalUSD first to match monthRevenue exactly
-          monthTotalUSD = bookingTotalUSD * paidRatio
-          // Then split monthTotalUSD proportionally between paid and remaining
-          const paidPercentage = bookingTotalUSD > 0 ? (bookingPaidUSD / bookingTotalUSD) : 0
-          monthPaidUSD = monthTotalUSD * paidPercentage
-          // IMPORTANT: For completed fully-paid bookings, finalRemaining is 0, so monthRemainingUSD should also be 0
-          const remainingRatio = bookingTotalUSD > 0 ? (finalRemaining / bookingTotalUSD) : 0
-          monthRemainingUSD = monthTotalUSD * remainingRatio
-
-          // IMPORTANT: Ensure monthPaidUSD + monthRemainingUSD = monthTotalUSD (within small tolerance)
-          const monthTotalCheck = monthPaidUSD + monthRemainingUSD
-          const monthTotalDifference = Math.abs(monthTotalUSD - monthTotalCheck)
-          if (monthTotalDifference > 0.01) {
-            console.warn(`[Financial] Month total mismatch for booking ${b._id || b.id}: monthTotalUSD=${monthTotalUSD.toFixed(2)}, monthPaidUSD=${monthPaidUSD.toFixed(2)}, monthRemainingUSD=${monthRemainingUSD.toFixed(2)}, sum=${monthTotalCheck.toFixed(2)}, difference=${monthTotalDifference.toFixed(2)}`)
-            // Fix by adjusting monthRemainingUSD to ensure sum equals monthTotalUSD
-            monthRemainingUSD = monthTotalUSD - monthPaidUSD
+        // IMPORTANT: For cross-month bookings, count full amounts in checkout month
+        // This matches the payment methods logic where full payment is counted in checkout month
+        if ((checkInMonth !== checkOutMonth || checkInYear !== checkOutYear) && !filters.showAllMonths) {
+          // Check if checkout is in the selected month
+          if (checkOutMonth === filters.month && checkOutYear === filters.year) {
+            // Booking ends in this month - count full amounts
+            monthPaidUSD = bookingPaidUSD
+            monthRemainingUSD = finalRemaining
+            monthTotalUSD = bookingTotalUSD
+          } else {
+            // Booking doesn't end in this month - don't count
+            monthPaidUSD = 0
+            monthRemainingUSD = 0
+            monthTotalUSD = 0
           }
         }
       }
@@ -813,34 +767,17 @@ const Financial = () => {
         const checkOutMonth = checkOutDateForPaymentSplit.getMonth() + 1
         const checkOutYear = checkOutDateForPaymentSplit.getFullYear()
 
-        // If booking spans multiple months, calculate split ratio
-        if ((checkInMonth !== checkOutMonth || checkInYear !== checkOutYear) && b.numberOfNights > 0) {
-          const totalNights = b.numberOfNights || 1
-
-          // Calculate nights in selected month
-          const monthStart = new Date(filters.year, filters.month - 1, 1)
-          const monthEnd = new Date(filters.year, filters.month, 0, 23, 59, 59, 999)
-          monthStart.setHours(0, 0, 0, 0)
-
-          let nightsInSelectedMonth = 0
-          let currentDate = new Date(checkInDateForPaymentSplit)
-          currentDate.setHours(0, 0, 0, 0)
-          const endDate = new Date(checkOutDateForPaymentSplit)
-          endDate.setHours(0, 0, 0, 0)
-
-          while (currentDate < endDate) {
-            const currentMonth = currentDate.getMonth() + 1
-            const currentYear = currentDate.getFullYear()
-
-            if (currentMonth === filters.month && currentYear === filters.year) {
-              nightsInSelectedMonth++
-            }
-
-            currentDate.setDate(currentDate.getDate() + 1)
+        // IMPORTANT: For cross-month bookings, count the full payment in the checkout month
+        // This matches the accounting logic where revenue is recognized when the booking completes
+        if ((checkInMonth !== checkOutMonth || checkInYear !== checkOutYear)) {
+          // Check if checkout is in the selected month
+          if (checkOutMonth === filters.month && checkOutYear === filters.year) {
+            // Booking ends in this month - count full payment
+            paymentSplitRatio = 1.0
+          } else {
+            // Booking doesn't end in this month - don't count payment
+            paymentSplitRatio = 0
           }
-
-          // Calculate split ratio
-          paymentSplitRatio = nightsInSelectedMonth / totalNights
         }
       }
 
@@ -1472,8 +1409,8 @@ const Financial = () => {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-lg font-bold whitespace-nowrap transition-all ${activeTab === tab.id
-                ? 'bg-booking-blue text-white shadow-lg'
-                : 'bg-white text-gray-600 hover:bg-gray-100'
+              ? 'bg-booking-blue text-white shadow-lg'
+              : 'bg-white text-gray-600 hover:bg-gray-100'
               }`}
           >
             {tab.label}
