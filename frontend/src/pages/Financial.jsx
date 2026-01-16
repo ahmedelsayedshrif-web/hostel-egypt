@@ -858,20 +858,25 @@ const Financial = () => {
             const paymentAmount = typeof payment.amount === 'number' ? payment.amount : (parseFloat(payment.amount || 0) || 0)
             
             // CRITICAL: Smart currency detection for old data
-            // If currency is missing or USD but amount is large (> 10), likely it's EGP
-            let paymentCurrency = (payment.currency && payment.currency.trim() !== '') ? payment.currency : null
+            // If currency is missing or USD, detect based on amount value
+            let originalPaymentCurrency = (payment.currency && payment.currency.trim() !== '') ? payment.currency : null
             
             // Auto-detect currency if missing or suspicious
-            if (!paymentCurrency || paymentCurrency === 'USD') {
-              // If amount is large (> 10), it's likely EGP (not USD)
-              // USD amounts are typically small (e.g., 15.80, 30.13)
-              // EGP amounts are typically large (e.g., 746, 9802)
-              if (paymentAmount > 10) {
-                paymentCurrency = 'EGP'
+            if (!originalPaymentCurrency || originalPaymentCurrency === 'USD') {
+              // Smart detection: 
+              // - Large amounts (> 100) are likely EGP (e.g., 746, 9802, 4000)
+              // - Small amounts (< 100) might be USD (e.g., 15.80, 30.13)
+              // But check booking currency as fallback
+              if (paymentAmount > 100) {
+                // Large amount = likely EGP
+                originalPaymentCurrency = 'EGP'
+              } else if (paymentAmount < 1) {
+                // Very small amount (< 1) = likely USD
+                originalPaymentCurrency = 'USD'
               } else {
-                // Small amounts might be USD, but check booking currency too
+                // Medium amount (1-100): check booking currency
                 const { currency: bookingCurrency } = detectBookingOriginalCurrency(b, safeCurrencyRates)
-                paymentCurrency = bookingCurrency || 'EGP'
+                originalPaymentCurrency = bookingCurrency || 'EGP'
               }
             }
             
@@ -880,23 +885,25 @@ const Financial = () => {
             const usdRate = lockedRates.USD || safeCurrencyRates.USD || 50
             
             // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/8f58bb7d-6eb4-4526-ac36-e1339a0843b1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Financial.jsx:861',message:'Payment processing - BEFORE conversion',data:{bookingId:b._id||b.id,method,paymentAmount,paymentCurrency,originalCurrency:payment.currency,detectedCurrency:paymentAmount>10?'EGP':'USD',hasLockedRates:!!b.exchangeRateAtBooking,lockedRates,usdRate,currentRates:safeCurrencyRates.USD,splitRatio:paymentSplitRatio},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,F'})}).catch(()=>{});
+            fetch('http://127.0.0.1:7242/ingest/8f58bb7d-6eb4-4526-ac36-e1339a0843b1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Financial.jsx:858',message:'Payment processing - BEFORE conversion',data:{bookingId:b._id||b.id,method,paymentAmount,originalPaymentCurrency:originalPaymentCurrency,hasLockedRates:!!b.exchangeRateAtBooking,lockedRates,usdRate,currentRates:safeCurrencyRates.USD,splitRatio:paymentSplitRatio},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,F'})}).catch(()=>{});
             // #endregion
             
-            // Convert payment amount directly to EGP based on its currency
-            // All payments must be aggregated in EGP before summing
+            // CRITICAL: Convert ALL payments to EGP regardless of original currency
+            // Even if customer paid in USD, we aggregate everything in EGP
+            // This is the requirement: all payments must be in EGP for aggregation
             let paymentInEGP = 0
-            if (paymentCurrency === 'EGP') {
+            
+            if (!originalPaymentCurrency || originalPaymentCurrency === 'EGP') {
               // Already in EGP, use directly (no conversion needed)
               paymentInEGP = paymentAmount
-            } else if (paymentCurrency === 'USD') {
+            } else if (originalPaymentCurrency === 'USD') {
               // Convert USD to EGP using locked rate (exchangeRateAtBooking)
-              // This ensures we use the rate at the time of booking, not current rate
+              // IMPORTANT: Even if customer paid in USD, convert to EGP for aggregation
               paymentInEGP = paymentAmount * usdRate
             } else {
-              // Convert other currencies to EGP using locked rates
+              // Convert other currencies (EUR, GBP, etc.) to EGP using locked rates
               // For other currencies, currencyRate is rateToEGP (e.g., EUR: 54 means 1 EUR = 54 EGP)
-              const currencyRate = lockedRates[paymentCurrency] || safeCurrencyRates[paymentCurrency] || usdRate
+              const currencyRate = lockedRates[originalPaymentCurrency] || safeCurrencyRates[originalPaymentCurrency] || usdRate
               paymentInEGP = paymentAmount * currencyRate
             }
             
@@ -904,7 +911,7 @@ const Financial = () => {
             const splitPaymentInEGP = paymentInEGP * paymentSplitRatio
             
             // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/8f58bb7d-6eb4-4526-ac36-e1339a0843b1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Financial.jsx:877',message:'Payment processing - AFTER conversion',data:{bookingId:b._id||b.id,method,paymentAmount,paymentCurrency,paymentInEGP,splitRatio:paymentSplitRatio,splitPaymentInEGP,currentTotal:paymentMethods[method]||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,D'})}).catch(()=>{});
+            fetch('http://127.0.0.1:7242/ingest/8f58bb7d-6eb4-4526-ac36-e1339a0843b1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Financial.jsx:880',message:'Payment processing - AFTER conversion to EGP',data:{bookingId:b._id||b.id,method,originalAmount:paymentAmount,originalCurrency:originalPaymentCurrency,paymentInEGP,splitRatio:paymentSplitRatio,splitPaymentInEGP,currentTotal:paymentMethods[method]||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,D'})}).catch(()=>{});
             // #endregion
             
             if (!paymentMethods[method]) paymentMethods[method] = 0
@@ -935,27 +942,18 @@ const Financial = () => {
           b.payments.forEach(payment => {
             if (payment && payment.amount) {
               const paymentAmount = typeof payment.amount === 'number' ? payment.amount : (parseFloat(payment.amount || 0) || 0)
+              const originalPaymentCurrency = (payment.currency && payment.currency.trim() !== '') ? payment.currency : 'EGP'
               
-              // CRITICAL: Smart currency detection for old data
-              let paymentCurrency = (payment.currency && payment.currency.trim() !== '') ? payment.currency : null
-              
-              // Auto-detect currency if missing or suspicious
-              if (!paymentCurrency || paymentCurrency === 'USD') {
-                if (paymentAmount > 10) {
-                  paymentCurrency = 'EGP'
-                } else {
-                  paymentCurrency = bookingCurrency || 'EGP'
-                }
-              }
-              
-              // Convert each payment to EGP using locked rates
-              if (paymentCurrency === 'EGP') {
+              // CRITICAL: Convert ALL payments to EGP regardless of original currency
+              // Even if customer paid in USD, convert to EGP for aggregation
+              if (originalPaymentCurrency === 'EGP') {
                 paidInEGP += paymentAmount
-              } else if (paymentCurrency === 'USD') {
-                // Use locked rate from booking
+              } else if (originalPaymentCurrency === 'USD') {
+                // Convert USD to EGP using locked rate
                 paidInEGP += paymentAmount * usdRate
               } else {
-                const currencyRate = lockedRates[paymentCurrency] || safeCurrencyRates[paymentCurrency] || usdRate
+                // Convert other currencies to EGP
+                const currencyRate = lockedRates[originalPaymentCurrency] || safeCurrencyRates[originalPaymentCurrency] || usdRate
                 paidInEGP += paymentAmount * currencyRate
               }
             }
