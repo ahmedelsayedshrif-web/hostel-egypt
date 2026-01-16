@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { canViewPartnerShares } from '../utils/permissions'
 import { calculateWaterfallPartnerProfits } from '../utils/waterfallCalculator'
 import { getBookingAmountInUSD, getBookingPaidAmountInUSD, detectBookingOriginalCurrency } from '../utils/bookingCurrency'
+import { formatDate, formatDateArabic } from '../utils/dateFormat'
 
 const Financial = () => {
   const { userRole } = useAuth()
@@ -17,8 +18,8 @@ const Financial = () => {
   const [partners, setPartners] = useState([])
   const [expenses, setExpenses] = useState([])
   const [currencyRates, setCurrencyRates] = useState({})
-  
-  
+
+
   // Filters - Default to current month/year
   const currentDate = new Date()
   const [filters, setFilters] = useState({
@@ -34,13 +35,13 @@ const Financial = () => {
     dateTo: '',
     showAllMonths: false,
   })
-  
+
   // Display
   // IMPORTANT: Default currency to EGP (Egyptian Pound) as requested
   const [currency, setCurrency] = useState('EGP')
   const [activeTab, setActiveTab] = useState('overview')
   const [showMonthlyReport, setShowMonthlyReport] = useState(false)
-  
+
   const months = [
     { value: 1, label: 'يناير' }, { value: 2, label: 'فبراير' },
     { value: 3, label: 'مارس' }, { value: 4, label: 'أبريل' },
@@ -49,33 +50,33 @@ const Financial = () => {
     { value: 9, label: 'سبتمبر' }, { value: 10, label: 'أكتوبر' },
     { value: 11, label: 'نوفمبر' }, { value: 12, label: 'ديسمبر' }
   ]
-  
+
   const years = [2026, 2025, 2024, 2023, 2022, 2021]
-  
+
   useEffect(() => {
     fetchAllData()
-    
+
     // Set up real-time listeners
     const unsubscribeBookings = bookingsFirestore.subscribe((bookingsData) => {
       console.log('✅ Bookings updated in real-time (Financial):', bookingsData.length)
       setBookings(bookingsData)
     })
-    
+
     const unsubscribeApartments = apartmentsFirestore.subscribe((apartmentsData) => {
       console.log('✅ Apartments updated in real-time (Financial):', apartmentsData.length)
       setApartments(apartmentsData)
     })
-    
+
     const unsubscribePartners = partnersFirestore.subscribe((partnersData) => {
       console.log('✅ Partners updated in real-time (Financial):', partnersData.length)
       setPartners(partnersData)
     })
-    
+
     const unsubscribeExpenses = expensesFirestore.subscribe((expensesData) => {
       console.log('✅ Expenses updated in real-time (Financial):', expensesData.length)
       setExpenses(expensesData)
     })
-    
+
     const unsubscribeRates = settingsFirestore.listenToCurrencyRates((rates) => {
       console.log('✅ Currency rates updated in real-time (Financial):', rates.length)
       if (rates && rates.length > 0) {
@@ -90,7 +91,7 @@ const Financial = () => {
         }
       }
     })
-    
+
     return () => {
       if (unsubscribeBookings) unsubscribeBookings()
       if (unsubscribeApartments) unsubscribeApartments()
@@ -99,7 +100,7 @@ const Financial = () => {
       if (unsubscribeRates) unsubscribeRates()
     }
   }, [])
-  
+
   const fetchAllData = async () => {
     setLoading(true)
     try {
@@ -108,14 +109,14 @@ const Financial = () => {
       let apartmentsData = []
       let partnersData = []
       let ratesData = []
-      
+
       try {
         [bookingsData, apartmentsData, partnersData] = await Promise.all([
           bookingsFirestore.getAll().catch(() => []),
           apartmentsFirestore.getAll().catch(() => []),
           partnersFirestore.getAll().catch(() => [])
         ])
-        
+
         // Fetch expenses
         try {
           const expensesData = await expensesFirestore.getAll().catch(() => [])
@@ -123,7 +124,7 @@ const Financial = () => {
         } catch (e) {
           console.log('Firestore expenses not available')
         }
-        
+
         try {
           ratesData = await settingsFirestore.getCurrencyRates()
         } catch (e) {
@@ -132,28 +133,28 @@ const Financial = () => {
       } catch (firestoreError) {
         console.log('Firestore not available, trying API:', firestoreError)
       }
-      
+
       // Fallback to API if Firestore data is empty
       if (!bookingsData || bookingsData.length === 0) {
         const bookingsRes = await bookingsAPI.getAll().catch(() => ({ data: [] }))
         bookingsData = Array.isArray(bookingsRes.data) ? bookingsRes.data : []
       }
-      
+
       if (!apartmentsData || apartmentsData.length === 0) {
         const apartmentsRes = await apartmentsAPI.getAll().catch(() => ({ data: [] }))
         apartmentsData = Array.isArray(apartmentsRes.data) ? apartmentsRes.data : []
       }
-      
+
       if (!partnersData || partnersData.length === 0) {
         const ownersRes = await partnersAPI.getAll().catch(() => ({ data: [] }))
         partnersData = Array.isArray(ownersRes.data) ? ownersRes.data : []
       }
-      
+
       if (!ratesData || ratesData.length === 0) {
         const ratesRes = await currencyAPI.getRates().catch(() => ({ data: [] }))
         ratesData = Array.isArray(ratesRes.data) ? ratesRes.data : []
       }
-      
+
       // Fetch expenses if not already loaded from Firestore
       let expensesData = []
       try {
@@ -178,13 +179,13 @@ const Financial = () => {
           setExpenses([])
         }
       }
-      
+
       setBookings(bookingsData)
       setApartments(apartmentsData)
       setPartners(partnersData)
-      
+
       const rates = {}
-      ratesData.forEach(r => { 
+      ratesData.forEach(r => {
         if (r && r.currency) {
           rates[r.currency] = r.rateToEGP || 50
         }
@@ -195,73 +196,73 @@ const Financial = () => {
     }
     setLoading(false)
   }
-  
+
   // Filter bookings based on all filters
   const getFilteredBookings = () => {
     if (!Array.isArray(bookings)) return []
-    
+
     // Normalize start/end of selected month to include bookings that span months
     const monthStart = new Date(filters.year, filters.month - 1, 1)
     const monthEnd = new Date(filters.year, filters.month, 0)
     monthStart.setHours(0, 0, 0, 0)
     monthEnd.setHours(23, 59, 59, 999)
-    
+
     return bookings.filter(booking => {
       const checkInDate = booking?.checkIn ? new Date(booking.checkIn) : null
       const checkOutDate = booking?.checkOut ? new Date(booking.checkOut) : checkInDate
       if (!checkInDate || isNaN(checkInDate.getTime())) return false
       if (!checkOutDate || isNaN(checkOutDate.getTime())) return false
-      
+
       checkInDate.setHours(0, 0, 0, 0)
       checkOutDate.setHours(23, 59, 59, 999)
-      
+
       // Month/Year filter: include any booking that overlaps the selected month
       if (!filters.showAllMonths) {
         const overlapsSelectedMonth = checkInDate <= monthEnd && checkOutDate >= monthStart
         if (!overlapsSelectedMonth) return false
       }
-      
+
       // Date range filter (still based on check-in)
       if (filters.dateFrom && new Date(booking.checkIn) < new Date(filters.dateFrom)) return false
       if (filters.dateTo && new Date(booking.checkIn) > new Date(filters.dateTo)) return false
-      
+
       // Apartment filter
       if (filters.apartment !== 'all' && booking.apartment !== filters.apartment) return false
-      
+
       // Partner filter (via apartment)
       if (filters.partner !== 'all') {
         const apt = apartments.find(a => a._id === booking.apartment)
         if (!apt || apt.mainOwner !== filters.partner) return false
       }
-      
+
       // Status filter
       if (filters.status !== 'all' && booking.status !== filters.status) return false
-      
+
       // Payment method filter
       if (filters.paymentMethod !== 'all' && booking.paymentMethod !== filters.paymentMethod) return false
-      
+
       // Platform filter
       if (filters.platform !== 'all' && booking.platform !== filters.platform) return false
-      
+
       return true
     })
   }
-  
+
   // Get filtered expenses based on filters
   const getFilteredExpenses = () => {
     if (!Array.isArray(expenses)) {
       return []
     }
-    
+
     return expenses.filter(expense => {
       // Get apartment ID (support both string and object)
       const expenseAptId = expense.apartment?._id || expense.apartment?.id || expense.apartment
-      
+
       // Filter by apartment
       if (filters.apartment !== 'all' && expenseAptId !== filters.apartment) {
         return false
       }
-      
+
       // Convert expense date to Date object
       let expenseDate = null
       if (expense.date) {
@@ -281,23 +282,23 @@ const Financial = () => {
           expenseDate = new Date(expense.createdAt)
         }
       }
-      
+
       if (!expenseDate || isNaN(expenseDate.getTime())) {
         console.warn('[Financial] Invalid expense date:', expense)
         return false
       }
-      
+
       // Filter by date range
       if (filters.dateFrom && expenseDate < new Date(filters.dateFrom)) return false
       if (filters.dateTo && expenseDate > new Date(filters.dateTo)) return false
-      
+
       // Filter by month/year if not showing all months
       if (!filters.showAllMonths) {
         const expenseMonth = expenseDate.getMonth() + 1
         const expenseYear = expenseDate.getFullYear()
         if (expenseMonth !== filters.month || expenseYear !== filters.year) return false
       }
-      
+
       return true
     })
   }
@@ -321,16 +322,16 @@ const Financial = () => {
     if (booking.status === 'cancelled' || booking.status === 'ended-early') {
       return booking.status
     }
-    
+
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    
+
     const checkInDate = safeDate(booking.checkIn)
     if (!checkInDate || isNaN(checkInDate.getTime())) {
       return booking.status || 'confirmed'
     }
     checkInDate.setHours(0, 0, 0, 0)
-    
+
     // IMPORTANT: If checkOut is missing or empty, it's an open-ended booking
     // Open-ended bookings are active if checkIn has passed
     if (!booking.checkOut || booking.checkOut === '') {
@@ -341,7 +342,7 @@ const Financial = () => {
       // If checkIn is in the future, it's upcoming
       return 'upcoming'
     }
-    
+
     const checkOutDate = safeDate(booking.checkOut)
     if (!checkOutDate || isNaN(checkOutDate.getTime())) {
       // Invalid checkOut, treat as open-ended
@@ -351,17 +352,17 @@ const Financial = () => {
       return 'upcoming'
     }
     checkOutDate.setHours(0, 0, 0, 0)
-    
+
     // If checkout date has passed = completed
     if (checkOutDate < today) {
       return 'completed'
     }
-    
+
     // If check-in date is today or passed and checkout is still future = active
     if (checkInDate <= today && checkOutDate >= today) {
       return 'active'
     }
-    
+
     // If check-in date is still future = upcoming
     if (checkInDate > today) {
       return 'upcoming'
@@ -375,20 +376,20 @@ const Financial = () => {
   const convertToUSD = (amount, currency) => {
     if (!amount || amount === 0) return 0
     const amountNum = parseFloat(amount) || 0
-    
+
     if (!currency || currency === 'USD') {
       return amountNum
     }
-    
+
     // Use currencyRates from state, with safe fallback
     const safeRates = currencyRates || { USD: 50, EUR: 54, GBP: 63, AED: 13.6, SAR: 13.3 }
     const usdRate = safeRates.USD || 50
     const currencyRate = safeRates[currency] || usdRate
-    
+
     if (currency === 'EGP') {
       return amountNum / usdRate
     }
-    
+
     // For other currencies, convert via EGP
     // amount in currency * currencyRate = amount in EGP
     // amount in EGP / usdRate = amount in USD
@@ -401,10 +402,10 @@ const Financial = () => {
   const calculateSummary = () => {
     const filtered = getFilteredBookings()
     const filteredExpenses = getFilteredExpenses()
-    
+
     // Ensure currencyRates is always defined to prevent crashes
     const safeCurrencyRates = currencyRates || { USD: 50, EUR: 54, GBP: 63, AED: 13.6, SAR: 13.3 }
-    
+
     // Helper function to safely convert date
     const safeDate = (dateValue) => {
       if (!dateValue) return null
@@ -417,7 +418,7 @@ const Financial = () => {
       }
       return new Date(dateValue)
     }
-    
+
     // Convert all amounts to USD for consistency
     // totalRevenue = sum of all booking amounts (completed + active + upcoming)
     // IMPORTANT: For cross-month bookings, split revenue by nights (same as Dashboard)
@@ -429,9 +430,9 @@ const Financial = () => {
         if (!b.totalBookingPriceCurrency && !b.totalAmountUSD) {
           bookingWarnings.push(`⚠️ [Financial] Booking ${b._id || b.id} (${b.guestName || 'Unknown'}) missing currency info`)
         }
-        
+
         const bookingTotalUSD = getBookingAmountInUSD(b, safeCurrencyRates)
-        
+
         // Calculate revenue split by nights for cross-month bookings (same as Dashboard)
         const checkInDateForSplit = safeDate(b.checkIn)
         const checkOutDateForSplit = safeDate(b.checkOut)
@@ -440,34 +441,34 @@ const Financial = () => {
           const checkInYear = checkInDateForSplit.getFullYear()
           const checkOutMonth = checkOutDateForSplit.getMonth() + 1
           const checkOutYear = checkOutDateForSplit.getFullYear()
-          
+
           // If booking spans multiple months, split revenue by nights
           if ((checkInMonth !== checkOutMonth || checkInYear !== checkOutYear) && b.numberOfNights > 0 && !filters.showAllMonths) {
             const totalNights = b.numberOfNights || 1
             const pricePerNight = bookingTotalUSD / totalNights
-            
+
             // Calculate nights in selected month
             const monthStart = new Date(filters.year, filters.month - 1, 1)
             const monthEnd = new Date(filters.year, filters.month, 0, 23, 59, 59, 999)
             monthStart.setHours(0, 0, 0, 0)
-            
+
             let nightsInSelectedMonth = 0
             let currentDate = new Date(checkInDateForSplit)
             currentDate.setHours(0, 0, 0, 0)
             const endDate = new Date(checkOutDateForSplit)
             endDate.setHours(0, 0, 0, 0)
-            
+
             while (currentDate < endDate) {
               const currentMonth = currentDate.getMonth() + 1
               const currentYear = currentDate.getFullYear()
-              
+
               if (currentMonth === filters.month && currentYear === filters.year) {
                 nightsInSelectedMonth++
               }
-              
+
               currentDate.setDate(currentDate.getDate() + 1)
             }
-            
+
             // Use split revenue for this month
             const monthRevenue = nightsInSelectedMonth * pricePerNight
             totalRevenue += monthRevenue
@@ -483,46 +484,46 @@ const Financial = () => {
         console.error('Error calculating booking amount:', e, b)
       }
     })
-    
+
     // IMPORTANT: Profits and revenue are only counted AFTER booking completion
     // Active/upcoming bookings show in pending amounts
     // paidAmount = sum of paid amounts for completed bookings only (with cross-month split)
     let paidAmount = 0
     let pendingAmount = 0
-    
+
     filtered.forEach(b => {
       const status = getComputedStatus(b)
       const bookingTotalUSD = getBookingAmountInUSD(b, safeCurrencyRates)
       let bookingPaidUSD = getBookingPaidAmountInUSD(b, safeCurrencyRates)
-      
+
       // IMPORTANT: Fix data inconsistency - if paid > total, cap paid at total
       if (bookingPaidUSD > bookingTotalUSD && bookingTotalUSD > 0) {
         bookingPaidUSD = bookingTotalUSD
       }
-      
+
       // IMPORTANT: For completed bookings that are fully paid, ensure remaining is 0
       const checkOutDateForStatus = safeDate(b.checkOut)
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const isCompleted = status === 'completed' || (checkOutDateForStatus && !isNaN(checkOutDateForStatus.getTime()) && checkOutDateForStatus.setHours(0, 0, 0, 0) < today.getTime())
       const calculatedRemaining = Math.max(0, bookingTotalUSD - bookingPaidUSD)
-      
+
       // If completed and fully paid (remaining < 0.01), set remaining to 0
       const finalRemaining = (isCompleted && calculatedRemaining < 0.01) ? 0 : calculatedRemaining
-      
+
       // Calculate paid/remaining split for cross-month bookings (same as Dashboard)
       const checkInDateForSplit = safeDate(b.checkIn)
       const checkOutDateForSplit = safeDate(b.checkOut)
       let monthPaidUSD = bookingPaidUSD
       let monthRemainingUSD = finalRemaining
       let monthTotalUSD = bookingTotalUSD
-      
+
       if (checkInDateForSplit && checkOutDateForSplit && !isNaN(checkInDateForSplit.getTime()) && !isNaN(checkOutDateForSplit.getTime())) {
         const checkInMonth = checkInDateForSplit.getMonth() + 1
         const checkInYear = checkInDateForSplit.getFullYear()
         const checkOutMonth = checkOutDateForSplit.getMonth() + 1
         const checkOutYear = checkOutDateForSplit.getFullYear()
-        
+
         // If booking spans multiple months, split paid/remaining proportionally (same as Dashboard)
         if ((checkInMonth !== checkOutMonth || checkInYear !== checkOutYear) && b.numberOfNights > 0 && !filters.showAllMonths) {
           const totalNights = b.numberOfNights || 1
@@ -532,7 +533,7 @@ const Financial = () => {
             currentDate.setHours(0, 0, 0, 0)
             const endDate = new Date(checkOutDateForSplit)
             endDate.setHours(0, 0, 0, 0)
-            
+
             while (currentDate < endDate) {
               const currentMonth = currentDate.getMonth() + 1
               const currentYear = currentDate.getFullYear()
@@ -543,7 +544,7 @@ const Financial = () => {
             }
             return nights
           })()
-          
+
           // Split paid and remaining proportionally by nights
           const paidRatio = nightsInSelectedMonth / totalNights
           // IMPORTANT: Calculate monthTotalUSD first to match monthRevenue exactly
@@ -554,7 +555,7 @@ const Financial = () => {
           // IMPORTANT: For completed fully-paid bookings, finalRemaining is 0, so monthRemainingUSD should also be 0
           const remainingRatio = bookingTotalUSD > 0 ? (finalRemaining / bookingTotalUSD) : 0
           monthRemainingUSD = monthTotalUSD * remainingRatio
-          
+
           // IMPORTANT: Ensure monthPaidUSD + monthRemainingUSD = monthTotalUSD (within small tolerance)
           const monthTotalCheck = monthPaidUSD + monthRemainingUSD
           const monthTotalDifference = Math.abs(monthTotalUSD - monthTotalCheck)
@@ -565,12 +566,12 @@ const Financial = () => {
           }
         }
       }
-      
+
       // IMPORTANT: For completed fully-paid bookings, ensure monthRemainingUSD is 0
       if (isCompleted && finalRemaining < 0.01) {
         monthRemainingUSD = 0
       }
-      
+
       // IMPORTANT: Ensure we always add something for each booking to match totalRevenue
       // If dates are invalid, use full amounts (same as totalRevenue fallback)
       // IMPORTANT: paidAmount + pendingAmount must equal totalRevenue
@@ -587,13 +588,13 @@ const Financial = () => {
         pendingAmount += monthTotalUSD
       }
     })
-    
+
     // Log booking warnings if any
     if (bookingWarnings.length > 0) {
       console.warn(`[Financial] Found ${bookingWarnings.length} booking warnings:`)
       bookingWarnings.slice(0, 10).forEach(warning => console.warn(warning)) // Limit to first 10
     }
-    
+
     // VALIDATION: totalRevenue should equal paidAmount + pendingAmount (with small tolerance for rounding)
     const calculatedTotal = paidAmount + pendingAmount
     const difference = Math.abs(totalRevenue - calculatedTotal)
@@ -602,7 +603,7 @@ const Financial = () => {
     } else {
       console.log(`[Financial] ✅ Revenue match verified: totalRevenue=$${totalRevenue.toFixed(2)} = paidAmount=$${paidAmount.toFixed(2)} + pendingAmount=$${pendingAmount.toFixed(2)}`)
     }
-    
+
     const ownerAmount = filtered.reduce((sum, b) => {
       // ownerAmount might be in USD or booking currency depending on booking version
       const { currency: bookingCurrency } = detectBookingOriginalCurrency(b, safeCurrencyRates)
@@ -617,17 +618,17 @@ const Financial = () => {
       }
       return sum + ownerAmountUSD
     }, 0)
-    
+
     const platformCommission = filtered.reduce((sum, b) => {
       // IMPORTANT: Platform commission is ONLY deducted in the checkout month
       // Check if checkout date is in the selected month
       const checkOutDate = b.checkOut ? new Date(b.checkOut) : null
       if (!checkOutDate || isNaN(checkOutDate.getTime())) return sum
-      
+
       const checkoutMonth = checkOutDate.getMonth() + 1
       const checkoutYear = checkOutDate.getFullYear()
       const isCheckoutInSelectedMonth = !filters.showAllMonths && checkoutMonth === filters.month && checkoutYear === filters.year
-      
+
       // Only add commission if showing all months OR checkout is in selected month
       if (filters.showAllMonths || isCheckoutInSelectedMonth) {
         // platformCommission might be in USD or booking currency depending on booking version
@@ -645,15 +646,15 @@ const Financial = () => {
       }
       return sum
     }, 0)
-    
+
     const cleaningFees = filtered.reduce((sum, b) => {
       const bookingCurrency = b.totalBookingPriceCurrency || b.currency || 'USD'
       const amountRaw = typeof b.cleaningFee === 'number' ? b.cleaningFee : parseFloat(b.cleaningFee || 0) || 0
       return sum + convertToUSD(amountRaw, bookingCurrency)
     }, 0)
-    
+
     const totalNights = filtered.reduce((sum, b) => sum + (b.numberOfNights || 0), 0)
-    
+
     // Calculate total expenses (convert to USD if needed)
     // Start with individual expenses
     let totalExpenses = filteredExpenses.reduce((sum, e) => {
@@ -669,7 +670,7 @@ const Financial = () => {
       const rate = safeCurrencyRates[expenseCurrency] || 50
       return sum + (amount / rate)
     }, 0)
-    
+
     // Add monthly expenses from all apartments (for the selected month)
     if (!filters.showAllMonths) {
       apartments.forEach(apt => {
@@ -684,19 +685,19 @@ const Financial = () => {
         }
       })
     }
-    
+
     // Calculate partner earnings using Waterfall logic
     // IMPORTANT: Filter to only completed bookings for profit calculation
     const completedBookingsForWaterfall = filtered.filter(b => {
       const status = getComputedStatus(b)
       return status === 'completed'
     })
-    
+
     // IMPORTANT: Pass all apartments (not just those with bookings) to ensure all partners are included
     const apartmentsForWaterfall = filters.apartment !== 'all'
       ? apartments.filter(a => (a._id || a.id) === filters.apartment)
       : apartments
-    
+
     const { partnerProfits: waterfallPartnerProfits } = calculateWaterfallPartnerProfits(
       completedBookingsForWaterfall,
       apartmentsForWaterfall,
@@ -704,17 +705,17 @@ const Financial = () => {
       safeCurrencyRates,
       convertToUSD
     )
-    
+
     // Convert to partnerEarnings format for compatibility with existing UI
     const partnerEarnings = {}
     let totalPartnerAmount = 0
-    
+
     // IMPORTANT: Include all partners, even those with 0 earnings
     waterfallPartnerProfits.forEach(partner => {
       const partnerKey = partner.name || partner.partnerId || 'unknown'
       // IMPORTANT: Partner amounts cannot be negative
       const partnerAmount = Math.max(0, partner.amount || 0)
-      
+
       // If partner already exists, merge the data (for partners with multiple apartments)
       if (partnerEarnings[partnerKey]) {
         partnerEarnings[partnerKey].amount += partnerAmount
@@ -733,26 +734,26 @@ const Financial = () => {
       }
       totalPartnerAmount += partnerAmount
     })
-    
+
     // IMPORTANT: Ensure totalPartnerAmount is never negative
     totalPartnerAmount = Math.max(0, totalPartnerAmount)
-    
+
     // Calculate net profit from paid amount (only completed bookings)
     // IMPORTANT: netProfit should only be calculated from completed bookings (paidAmount)
     // not from totalRevenue which includes active/upcoming bookings
     // Recalculate platformCommission, cleaningFees, and totalPartnerAmount for completed bookings only
     let completedPlatformCommission = 0
     let completedCleaningFees = 0
-    
+
     completedBookingsForWaterfall.forEach(b => {
       // Platform commission (only in checkout month)
       const checkOutDate = b.checkOut ? new Date(b.checkOut) : null
       if (!checkOutDate || isNaN(checkOutDate.getTime())) return
-      
+
       const checkoutMonth = checkOutDate.getMonth() + 1
       const checkoutYear = checkOutDate.getFullYear()
       const isCheckoutInSelectedMonth = !filters.showAllMonths && checkoutMonth === filters.month && checkoutYear === filters.year
-      
+
       if (filters.showAllMonths || isCheckoutInSelectedMonth) {
         const bookingCurrency = b.totalBookingPriceCurrency || b.currency || 'USD'
         let platformCommissionUSD = 0
@@ -763,22 +764,22 @@ const Financial = () => {
           platformCommissionUSD = convertToUSD(platformCommissionRaw, bookingCurrency)
         }
         completedPlatformCommission += platformCommissionUSD
-        
+
         // Cleaning fees
         const cleaningFeeRaw = typeof b.cleaningFee === 'number' ? b.cleaningFee : parseFloat(b.cleaningFee || 0) || 0
         completedCleaningFees += convertToUSD(cleaningFeeRaw, bookingCurrency)
       }
     })
-    
+
     // Calculate net profit from paid amount (only completed bookings)
     const calculatedNetProfit = paidAmount - completedPlatformCommission - completedCleaningFees - totalExpenses - totalPartnerAmount
-    
+
     // IMPORTANT: For display purposes, use completed values to show accurate information
     // The platformCommission and cleaningFees shown should match what was actually deducted
     // Use completedPlatformCommission and completedCleaningFees for display instead of platformCommission and cleaningFees
     const displayPlatformCommission = completedPlatformCommission
     const displayCleaningFees = completedCleaningFees
-    
+
     // IMPORTANT: Calculate ownerAmount only from completed bookings for display consistency
     let displayOwnerAmount = 0
     completedBookingsForWaterfall.forEach(b => {
@@ -794,7 +795,7 @@ const Financial = () => {
       }
       displayOwnerAmount += ownerAmountUSD
     })
-    
+
     // Payment method breakdown
     // IMPORTANT: Handle split payments (payments array) correctly, especially for cross-month bookings
     // CRITICAL: All amounts must be aggregated directly in EGP (not USD first)
@@ -805,44 +806,44 @@ const Financial = () => {
       const checkInDateForPaymentSplit = safeDate(b.checkIn)
       const checkOutDateForPaymentSplit = safeDate(b.checkOut)
       let paymentSplitRatio = 1.0 // Default: full amount for single-month bookings
-      
+
       if (checkInDateForPaymentSplit && checkOutDateForPaymentSplit && !isNaN(checkInDateForPaymentSplit.getTime()) && !isNaN(checkOutDateForPaymentSplit.getTime()) && !filters.showAllMonths) {
         const checkInMonth = checkInDateForPaymentSplit.getMonth() + 1
         const checkInYear = checkInDateForPaymentSplit.getFullYear()
         const checkOutMonth = checkOutDateForPaymentSplit.getMonth() + 1
         const checkOutYear = checkOutDateForPaymentSplit.getFullYear()
-        
+
         // If booking spans multiple months, calculate split ratio
         if ((checkInMonth !== checkOutMonth || checkInYear !== checkOutYear) && b.numberOfNights > 0) {
           const totalNights = b.numberOfNights || 1
-          
+
           // Calculate nights in selected month
           const monthStart = new Date(filters.year, filters.month - 1, 1)
           const monthEnd = new Date(filters.year, filters.month, 0, 23, 59, 59, 999)
           monthStart.setHours(0, 0, 0, 0)
-          
+
           let nightsInSelectedMonth = 0
           let currentDate = new Date(checkInDateForPaymentSplit)
           currentDate.setHours(0, 0, 0, 0)
           const endDate = new Date(checkOutDateForPaymentSplit)
           endDate.setHours(0, 0, 0, 0)
-          
+
           while (currentDate < endDate) {
             const currentMonth = currentDate.getMonth() + 1
             const currentYear = currentDate.getFullYear()
-            
+
             if (currentMonth === filters.month && currentYear === filters.year) {
               nightsInSelectedMonth++
             }
-            
+
             currentDate.setDate(currentDate.getDate() + 1)
           }
-          
+
           // Calculate split ratio
           paymentSplitRatio = nightsInSelectedMonth / totalNights
         }
       }
-      
+
       // IMPORTANT: Process payments - always use payments array if available, otherwise fallback to paidAmount
       // CRITICAL: Each payment must be converted from its original currency to EGP individually
       if (b.payments && Array.isArray(b.payments) && b.payments.length > 0) {
@@ -851,25 +852,25 @@ const Financial = () => {
           if (payment && payment.method && payment.amount) {
             const method = payment.method
             const paymentAmount = typeof payment.amount === 'number' ? payment.amount : (parseFloat(payment.amount || 0) || 0)
-            
+
             // CRITICAL: Smart currency detection for old data
             // PROBLEM: Old data may have EGP amounts stored with currency='USD'
             // EXAMPLE: payment.amount=746, payment.currency='USD' (WRONG - should be EGP)
             // SOLUTION: Always validate amount against declared currency
-            
+
             // IMPORTANT: Use locked exchange rate from booking if available
             const lockedRates = b.exchangeRateAtBooking || {}
             const usdRate = lockedRates.USD || safeCurrencyRates.USD || 50
-            
+
             let originalPaymentCurrency = (payment.currency && payment.currency.trim() !== '') ? payment.currency : null
-            
+
             // CRITICAL: Validate currency - if amount is large and currency is USD, it's likely EGP
             // PROBLEM: Old data has EGP amounts (746, 9802) stored with currency='USD'
             // SOLUTION: If amount > 50, always treat as EGP (not USD)
             if (!originalPaymentCurrency || originalPaymentCurrency === 'USD') {
               // Real USD payments: 15.80, 30.13, 84.73, 207.64 (small numbers, typically < 50)
               // Real EGP payments: 746, 9802, 4000, 3000 (large numbers, typically > 50)
-              
+
               if (paymentAmount > 50) {
                 // Large amount (> 50) = definitely EGP, not USD
                 // Even if currency='USD' in database, treat as EGP
@@ -883,12 +884,12 @@ const Financial = () => {
                 originalPaymentCurrency = bookingCurrency || 'EGP'
               }
             }
-            
+
             // CRITICAL: Convert ALL payments to EGP regardless of original currency
             // Even if customer paid in USD, we aggregate everything in EGP
             // This is the requirement: all payments must be in EGP for aggregation
             let paymentInEGP = 0
-            
+
             if (!originalPaymentCurrency || originalPaymentCurrency === 'EGP') {
               // Already in EGP, use directly (no conversion needed)
               paymentInEGP = paymentAmount
@@ -902,14 +903,14 @@ const Financial = () => {
               const currencyRate = lockedRates[originalPaymentCurrency] || safeCurrencyRates[originalPaymentCurrency] || usdRate
               paymentInEGP = paymentAmount * currencyRate
             }
-            
+
             // IMPORTANT: Apply split ratio for cross-month bookings (after converting to EGP)
             const splitPaymentInEGP = paymentInEGP * paymentSplitRatio
-            
+
             // #region agent log
             console.log(`[DEBUG Payment] Booking ${b._id || b.id || 'unknown'}: method=${method}, originalAmount=${paymentAmount}, originalCurrency=${payment.currency || 'null'}, detectedCurrency=${originalPaymentCurrency}, convertedToEGP=${paymentInEGP}, splitRatio=${paymentSplitRatio}, finalEGP=${splitPaymentInEGP}, usdRate=${usdRate}`)
             // #endregion
-            
+
             if (!paymentMethods[method]) paymentMethods[method] = 0
             paymentMethods[method] += splitPaymentInEGP
             totalPaymentsCheck += splitPaymentInEGP
@@ -923,18 +924,18 @@ const Financial = () => {
         const { currency: bookingCurrency } = detectBookingOriginalCurrency(b, safeCurrencyRates)
         const lockedRates = b.exchangeRateAtBooking || {}
         const usdRate = lockedRates.USD || safeCurrencyRates.USD || 50
-        
+
         // IMPORTANT: Get paid amount correctly
         // If booking has payments array but we're in fallback (shouldn't happen, but safe guard)
         let paidInEGP = 0
-        
+
         // Check if booking actually has payments array (shouldn't reach here if it does)
         if (b.payments && Array.isArray(b.payments) && b.payments.length > 0) {
           // This shouldn't happen, but if it does, process payments
           b.payments.forEach(payment => {
             if (payment && payment.amount) {
               const paymentAmount = typeof payment.amount === 'number' ? payment.amount : (parseFloat(payment.amount || 0) || 0)
-              
+
               // CRITICAL: Auto-detect currency for old data (same logic as above)
               let originalPaymentCurrency = (payment.currency && payment.currency.trim() !== '') ? payment.currency : null
               if (!originalPaymentCurrency || originalPaymentCurrency === 'USD') {
@@ -946,7 +947,7 @@ const Financial = () => {
                   originalPaymentCurrency = bookingCurrency || 'EGP'
                 }
               }
-              
+
               // CRITICAL: Convert ALL payments to EGP regardless of original currency
               // Even if customer paid in USD, convert to EGP for aggregation
               if (originalPaymentCurrency === 'EGP') {
@@ -966,12 +967,12 @@ const Financial = () => {
           // IMPORTANT: paidAmount is stored in USD, but original payment was in bookingCurrency
           // We need to convert it back to EGP
           const paidInUSD = getBookingPaidAmountInUSD(b, safeCurrencyRates)
-          
+
           // Convert from USD to EGP using locked rate
           // This reconstructs the original payment amount in EGP
           paidInEGP = paidInUSD * usdRate
         }
-        
+
         // IMPORTANT: Apply split ratio for cross-month bookings (after converting to EGP)
         const splitPaidInEGP = paidInEGP * paymentSplitRatio
         if (!paymentMethods[method]) paymentMethods[method] = 0
@@ -979,11 +980,11 @@ const Financial = () => {
         totalPaymentsCheck += splitPaidInEGP
       }
     })
-    
+
     // Validation: Log payment methods summary for debugging
     // IMPORTANT: paidAmount is in USD, convert to EGP for comparison
     const totalPaidInEGP = paidAmount * (safeCurrencyRates.USD || 50)
-    
+
     // #region agent log
     console.log('[DEBUG Summary] Payment Methods Breakdown:', {
       instapay: paymentMethods.instapay || 0,
@@ -997,7 +998,7 @@ const Financial = () => {
       exchangeRate: safeCurrencyRates.USD || 50
     })
     // #endregion
-    
+
     console.log('[Financial] 💳 Payment Methods Summary (EGP):', {
       instapay: paymentMethods.instapay || 0,
       cash: paymentMethods.cash || 0,
@@ -1008,12 +1009,12 @@ const Financial = () => {
       difference: Math.abs(totalPaymentsCheck - totalPaidInEGP),
       bookingsProcessed: filtered.length
     })
-    
+
     // Additional validation: Check if totals match
     if (Math.abs(totalPaymentsCheck - totalPaidInEGP) > 1) {
       console.warn(`[Financial] ⚠️ Payment methods total (${totalPaymentsCheck.toFixed(2)} EGP) doesn't match paid amount (${totalPaidInEGP.toFixed(2)} EGP). Difference: ${Math.abs(totalPaymentsCheck - totalPaidInEGP).toFixed(2)} EGP`)
     }
-    
+
     // Platform breakdown
     const platforms = {}
     filtered.forEach(b => {
@@ -1023,42 +1024,42 @@ const Financial = () => {
       platforms[platform].commission += b.platformCommission || 0
       platforms[platform].count += 1
     })
-    
+
     // Apartment breakdown (with expenses)
     // Initialize apartment stats for all apartments (even without bookings)
     const apartmentStats = {}
-    
+
     // First, collect all relevant apartment IDs
     const relevantApartmentIds = new Set()
-    
+
     // Add apartments from bookings
     filtered.forEach(b => {
       const aptId = b.apartment?._id || b.apartment?.id || b.apartment
       if (aptId) relevantApartmentIds.add(aptId)
     })
-    
+
     // Add apartments from expenses
     filteredExpenses.forEach(e => {
       const expenseAptId = e.apartment?._id || e.apartment?.id || e.apartment
       if (expenseAptId) relevantApartmentIds.add(expenseAptId)
     })
-    
+
     // If apartment filter is set, only show that apartment
     if (filters.apartment !== 'all') {
       relevantApartmentIds.clear()
       relevantApartmentIds.add(filters.apartment)
     }
-    
+
     // Initialize stats for all relevant apartments
     relevantApartmentIds.forEach(aptId => {
       const apt = apartments.find(a => (a._id || a.id) === aptId)
       if (apt) {
         const aptName = apt.name || 'غير محدد'
         if (!apartmentStats[aptName]) {
-          apartmentStats[aptName] = { 
-            revenue: 0, 
-            profit: 0, 
-            bookings: 0, 
+          apartmentStats[aptName] = {
+            revenue: 0,
+            profit: 0,
+            bookings: 0,
             nights: 0,
             expenses: 0,
             monthlyExpenses: 0,
@@ -1068,18 +1069,18 @@ const Financial = () => {
         }
       }
     })
-    
+
     // Add booking data
     filtered.forEach(b => {
       const aptId = b.apartment?._id || b.apartment?.id || b.apartment
       const apt = apartments.find(a => (a._id || a.id) === aptId)
       const aptName = apt?.name || b.apartmentName || 'غير محدد'
-      
+
       if (!apartmentStats[aptName]) {
-        apartmentStats[aptName] = { 
-          revenue: 0, 
-          profit: 0, 
-          bookings: 0, 
+        apartmentStats[aptName] = {
+          revenue: 0,
+          profit: 0,
+          bookings: 0,
           nights: 0,
           expenses: 0,
           monthlyExpenses: 0,
@@ -1087,25 +1088,25 @@ const Financial = () => {
           netProfit: 0
         }
       }
-      
+
       apartmentStats[aptName].revenue += b.totalBookingPrice || b.totalAmountUSD || b.totalAmount || 0
       apartmentStats[aptName].profit += b.brokerProfit || 0
       apartmentStats[aptName].bookings += 1
       apartmentStats[aptName].nights += b.numberOfNights || 0
     })
-    
+
     // Add expenses to apartment stats
     filteredExpenses.forEach(e => {
       const expenseAptId = e.apartment?._id || e.apartment?.id || e.apartment
       const apt = apartments.find(a => (a._id || a.id) === expenseAptId)
       const aptName = apt?.name || 'غير محدد'
-      
+
       // Initialize if not exists
       if (!apartmentStats[aptName]) {
-        apartmentStats[aptName] = { 
-          revenue: 0, 
-          profit: 0, 
-          bookings: 0, 
+        apartmentStats[aptName] = {
+          revenue: 0,
+          profit: 0,
+          bookings: 0,
           nights: 0,
           expenses: 0,
           monthlyExpenses: 0,
@@ -1113,7 +1114,7 @@ const Financial = () => {
           netProfit: 0
         }
       }
-      
+
       const amount = parseFloat(e.amount || 0)
       const expenseCurrency = e.currency || 'EGP'
       let expenseInUSD = amount
@@ -1127,19 +1128,19 @@ const Financial = () => {
       apartmentStats[aptName].individualExpenses += expenseInUSD
       apartmentStats[aptName].expenses += expenseInUSD
     })
-    
+
     // Add monthly expenses from apartments
     apartments.forEach(apt => {
       const aptName = apt?.name || 'غير محدد'
-      
+
       // Only include if apartment is in relevant list or showing all apartments
       if (filters.apartment === 'all' || (apt._id || apt.id) === filters.apartment) {
         // Initialize if not exists
         if (!apartmentStats[aptName]) {
-          apartmentStats[aptName] = { 
-            revenue: 0, 
-            profit: 0, 
-            bookings: 0, 
+          apartmentStats[aptName] = {
+            revenue: 0,
+            profit: 0,
+            bookings: 0,
             nights: 0,
             expenses: 0,
             monthlyExpenses: 0,
@@ -1147,7 +1148,7 @@ const Financial = () => {
             netProfit: 0
           }
         }
-        
+
         // Calculate monthly expenses for the selected month/year
         if (apt.monthlyExpenses && Array.isArray(apt.monthlyExpenses)) {
           const monthlyTotalEGP = apt.monthlyExpenses.reduce((sum, e) => sum + (e.amount || 0), 0)
@@ -1158,12 +1159,12 @@ const Financial = () => {
         }
       }
     })
-    
+
     // Calculate net profit for all apartments
     Object.keys(apartmentStats).forEach(aptName => {
       apartmentStats[aptName].netProfit = apartmentStats[aptName].profit - apartmentStats[aptName].expenses
     })
-    
+
     return {
       totalBookings: filtered.length,
       totalRevenue,
@@ -1184,15 +1185,15 @@ const Financial = () => {
       expenses: filteredExpenses
     }
   }
-  
+
   const summary = calculateSummary()
-  
+
   const formatMoney = (amount, isAlreadyInEGP = false) => {
     const safeAmount = amount || 0
     // IMPORTANT: Use currencyRates from state, not safeCurrencyRates (which is only in calculateSummary scope)
     const safeRates = currencyRates || { USD: 50, EUR: 54, GBP: 63, AED: 13.6, SAR: 13.3 }
     const usdRate = safeRates.USD || 50
-    
+
     if (currency === 'EGP') {
       // If amount is already in EGP (e.g., paymentMethods), use directly
       if (isAlreadyInEGP) {
@@ -1210,7 +1211,7 @@ const Financial = () => {
     }
     return `$${safeAmount.toFixed(2)}`
   }
-  
+
   const getPaymentMethodLabel = (method) => {
     const labels = {
       cash: '💵 نقدي',
@@ -1221,7 +1222,7 @@ const Financial = () => {
     }
     return labels[method] || method
   }
-  
+
   const getPlatformLabel = (platform) => {
     const labels = {
       'booking.com': '🅱️ Booking.com',
@@ -1231,7 +1232,7 @@ const Financial = () => {
     }
     return labels[platform] || platform
   }
-  
+
   const getStatusLabel = (status) => {
     const labels = {
       confirmed: '✅ مؤكد',
@@ -1289,7 +1290,7 @@ const Financial = () => {
         <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
           🔍 الفلاتر والتصفية
         </h2>
-        
+
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           {/* Show All Months Toggle */}
           <div className="col-span-2">
@@ -1470,11 +1471,10 @@ const Financial = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-lg font-bold whitespace-nowrap transition-all ${
-              activeTab === tab.id
+            className={`px-4 py-2 rounded-lg font-bold whitespace-nowrap transition-all ${activeTab === tab.id
                 ? 'bg-booking-blue text-white shadow-lg'
                 : 'bg-white text-gray-600 hover:bg-gray-100'
-            }`}
+              }`}
           >
             {tab.label}
           </button>
@@ -1547,24 +1547,24 @@ const Financial = () => {
             {canViewPartnerShares(userRole) && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-4">🤝 أرباح الشركاء</h3>
-              {summary.partnerEarnings && Object.keys(summary.partnerEarnings).length > 0 ? (
-                <div className="space-y-3">
-                  {Object.entries(summary.partnerEarnings).map(([name, data]) => (
-                    <div key={name || 'unknown'} className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-                      <div>
-                        <span className="font-medium">{name || 'شريك'}</span>
-                        <span className="text-sm text-purple-600 mr-2">({data.percentage || 0}%)</span>
+                {summary.partnerEarnings && Object.keys(summary.partnerEarnings).length > 0 ? (
+                  <div className="space-y-3">
+                    {Object.entries(summary.partnerEarnings).map(([name, data]) => (
+                      <div key={name || 'unknown'} className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                        <div>
+                          <span className="font-medium">{name || 'شريك'}</span>
+                          <span className="text-sm text-purple-600 mr-2">({data.percentage || 0}%)</span>
+                        </div>
+                        <div className="text-left">
+                          <div className="font-bold text-purple-600">{formatMoney(Math.max(0, data.amount || 0))}</div>
+                          <div className="text-xs text-gray-500">{data.bookings || 0} حجز</div>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <div className="font-bold text-purple-600">{formatMoney(Math.max(0, data.amount || 0))}</div>
-                        <div className="text-xs text-gray-500">{data.bookings || 0} حجز</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-400">لا يوجد شركاء في هذه الفترة</div>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-400">لا يوجد شركاء في هذه الفترة</div>
+                )}
               </div>
             )}
           </div>
@@ -1618,7 +1618,7 @@ const Financial = () => {
                     const monthlyExpenses = stats.monthlyExpenses || 0
                     const individualExpenses = stats.individualExpenses || 0
                     const totalExpenses = monthlyExpenses + individualExpenses
-                    
+
                     return (
                       <div key={name} className="bg-white rounded-lg p-4 border-r-4 border-red-400">
                         <div className="flex items-center justify-between mb-3">
@@ -1788,25 +1788,25 @@ const Financial = () => {
                         const checkInDateForDisplay = safeDate(booking.checkIn)
                         const checkOutDateForDisplay = safeDate(booking.checkOut)
                         let paymentSplitRatio = 1.0
-                        
+
                         if (checkInDateForDisplay && checkOutDateForDisplay && !isNaN(checkInDateForDisplay.getTime()) && !isNaN(checkOutDateForDisplay.getTime()) && !filters.showAllMonths) {
                           const checkInMonth = checkInDateForDisplay.getMonth() + 1
                           const checkInYear = checkInDateForDisplay.getFullYear()
                           const checkOutMonth = checkOutDateForDisplay.getMonth() + 1
                           const checkOutYear = checkOutDateForDisplay.getFullYear()
-                          
+
                           if ((checkInMonth !== checkOutMonth || checkInYear !== checkOutYear) && booking.numberOfNights > 0) {
                             const totalNights = booking.numberOfNights || 1
                             const monthStart = new Date(filters.year, filters.month - 1, 1)
                             const monthEnd = new Date(filters.year, filters.month, 0, 23, 59, 59, 999)
                             monthStart.setHours(0, 0, 0, 0)
-                            
+
                             let nightsInSelectedMonth = 0
                             let currentDate = new Date(checkInDateForDisplay)
                             currentDate.setHours(0, 0, 0, 0)
                             const endDate = new Date(checkOutDateForDisplay)
                             endDate.setHours(0, 0, 0, 0)
-                            
+
                             while (currentDate < endDate) {
                               const currentMonth = currentDate.getMonth() + 1
                               const currentYear = currentDate.getFullYear()
@@ -1815,22 +1815,22 @@ const Financial = () => {
                               }
                               currentDate.setDate(currentDate.getDate() + 1)
                             }
-                            
+
                             paymentSplitRatio = nightsInSelectedMonth / totalNights
                           }
                         }
-                        
+
                         // IMPORTANT: Use locked exchange rates from booking if available
                         const lockedRates = booking.exchangeRateAtBooking || {}
                         const usdRate = lockedRates.USD || safeCurrencyRates.USD || 50
-                        
+
                         if (booking.payments && Array.isArray(booking.payments) && booking.payments.length > 1) {
                           return (
                             <div className="text-xs space-y-1">
                               {booking.payments.map((p, idx) => {
                                 const paymentAmount = typeof p.amount === 'number' ? p.amount : (parseFloat(p.amount || 0) || 0)
                                 const paymentCurrency = p.currency || 'USD'
-                                
+
                                 // Convert payment amount to USD using locked rates if available
                                 let paymentInUSD = paymentAmount
                                 if (paymentCurrency === 'EGP') {
@@ -1839,10 +1839,10 @@ const Financial = () => {
                                   const currencyRate = lockedRates[paymentCurrency] || safeCurrencyRates[paymentCurrency] || safeCurrencyRates.USD || 50
                                   paymentInUSD = (paymentAmount * currencyRate) / usdRate
                                 }
-                                
+
                                 // IMPORTANT: Apply split ratio for cross-month bookings
                                 const splitPaymentInUSD = paymentInUSD * paymentSplitRatio
-                                
+
                                 return (
                                   <div key={idx}>{getPaymentMethodLabel(p.method || 'unknown')}: {formatMoney(splitPaymentInUSD)}</div>
                                 )
@@ -1973,38 +1973,38 @@ const Financial = () => {
               {Object.entries(summary.apartmentStats)
                 .filter(([name, stats]) => (stats.monthlyExpenses || 0) > 0 || (stats.individualExpenses || 0) > 0)
                 .length > 0 && (
-                <div className="mb-6 bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-4 border-2 border-red-200">
-                  <h3 className="font-bold text-lg mb-3 text-red-800">💰 مصروفات الشقق</h3>
-                  <div className="space-y-3">
-                    {Object.entries(summary.apartmentStats)
-                      .filter(([name, stats]) => (stats.monthlyExpenses || 0) > 0 || (stats.individualExpenses || 0) > 0)
-                      .map(([name, stats]) => {
-                        const monthlyExpenses = stats.monthlyExpenses || 0
-                        const individualExpenses = stats.individualExpenses || 0
-                        const totalExpenses = monthlyExpenses + individualExpenses
-                        
-                        return (
-                          <div key={name} className="bg-white rounded-lg p-3 border-r-4 border-red-400">
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-bold text-gray-800">{name}</h4>
-                              <span className="font-bold text-red-700">{formatMoney(totalExpenses)}</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div className="bg-red-50 p-2 rounded">
-                                <div className="text-gray-600">المصاريف الشهرية</div>
-                                <div className="font-bold text-red-600">{formatMoney(monthlyExpenses)}</div>
+                  <div className="mb-6 bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-4 border-2 border-red-200">
+                    <h3 className="font-bold text-lg mb-3 text-red-800">💰 مصروفات الشقق</h3>
+                    <div className="space-y-3">
+                      {Object.entries(summary.apartmentStats)
+                        .filter(([name, stats]) => (stats.monthlyExpenses || 0) > 0 || (stats.individualExpenses || 0) > 0)
+                        .map(([name, stats]) => {
+                          const monthlyExpenses = stats.monthlyExpenses || 0
+                          const individualExpenses = stats.individualExpenses || 0
+                          const totalExpenses = monthlyExpenses + individualExpenses
+
+                          return (
+                            <div key={name} className="bg-white rounded-lg p-3 border-r-4 border-red-400">
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-bold text-gray-800">{name}</h4>
+                                <span className="font-bold text-red-700">{formatMoney(totalExpenses)}</span>
                               </div>
-                              <div className="bg-orange-50 p-2 rounded">
-                                <div className="text-gray-600">المصروفات الفردية</div>
-                                <div className="font-bold text-orange-600">{formatMoney(individualExpenses)}</div>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="bg-red-50 p-2 rounded">
+                                  <div className="text-gray-600">المصاريف الشهرية</div>
+                                  <div className="font-bold text-red-600">{formatMoney(monthlyExpenses)}</div>
+                                </div>
+                                <div className="bg-orange-50 p-2 rounded">
+                                  <div className="text-gray-600">المصروفات الفردية</div>
+                                  <div className="font-bold text-orange-600">{formatMoney(individualExpenses)}</div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        )
-                      })}
+                          )
+                        })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Payment Methods Summary */}
               <div className="mb-6">
